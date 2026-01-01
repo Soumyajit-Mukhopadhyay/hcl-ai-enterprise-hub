@@ -179,6 +179,7 @@ export function useChatSession() {
         messages: chatMessages,
         domain,
         documentContext: documentContext || undefined,
+        sessionId: sessionId || undefined,
         onDelta: (delta) => {
           assistantContent += delta;
           setMessages(prev => prev.map(m => 

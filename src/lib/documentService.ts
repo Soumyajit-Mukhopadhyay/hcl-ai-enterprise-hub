@@ -8,7 +8,19 @@ export interface UploadedDocument {
   file_size: number;
   storage_path: string;
   extracted_text?: string;
+  embeddings_generated?: boolean;
+  page_count?: number;
   created_at: string;
+}
+
+export interface SearchResult {
+  chunkId: string;
+  documentId: string;
+  documentName: string;
+  pageNumber: number;
+  content: string;
+  snippet: string;
+  score: number;
 }
 
 // Supported file types
@@ -23,7 +35,7 @@ const SUPPORTED_TYPES = [
   'text/plain',
 ];
 
-// Upload a document to storage
+// Upload a document to storage and trigger processing
 export async function uploadDocument(
   file: File,
   sessionId?: string
@@ -53,12 +65,7 @@ export async function uploadDocument(
     throw new Error(`Failed to upload file: ${uploadError.message}`);
   }
 
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from('documents')
-    .getPublicUrl(storagePath);
-
-  // Extract text for text-based files
+  // Extract text for text-based files locally
   let extractedText = '';
   if (file.type === 'text/plain') {
     extractedText = await file.text();
@@ -75,6 +82,7 @@ export async function uploadDocument(
       file_size: file.size,
       storage_path: storagePath,
       extracted_text: extractedText || null,
+      embeddings_generated: false,
     })
     .select()
     .single();
@@ -86,7 +94,46 @@ export async function uploadDocument(
     throw new Error(`Failed to save document metadata: ${error.message}`);
   }
 
+  // Trigger document processing for PDF files
+  if (file.type === 'application/pdf') {
+    processDocument(fileId, storagePath).catch(console.error);
+  }
+
   return data as UploadedDocument;
+}
+
+// Process document (extract text, create embeddings)
+export async function processDocument(documentId: string, storagePath: string): Promise<void> {
+  console.log(`Processing document: ${documentId}`);
+  
+  const { data, error } = await supabase.functions.invoke('process-document', {
+    body: { documentId, storagePath },
+  });
+
+  if (error) {
+    console.error('Document processing error:', error);
+    throw new Error(`Failed to process document: ${error.message}`);
+  }
+
+  console.log('Document processed:', data);
+}
+
+// Semantic search across documents
+export async function semanticSearch(
+  query: string, 
+  sessionId?: string,
+  limit: number = 5
+): Promise<SearchResult[]> {
+  const { data, error } = await supabase.functions.invoke('semantic-search', {
+    body: { query, sessionId, limit },
+  });
+
+  if (error) {
+    console.error('Semantic search error:', error);
+    throw new Error(`Search failed: ${error.message}`);
+  }
+
+  return data?.results || [];
 }
 
 // Get documents for a session
@@ -120,7 +167,7 @@ export async function getAllDocuments(): Promise<UploadedDocument[]> {
   return data || [];
 }
 
-// Delete a document
+// Delete a document and its chunks
 export async function deleteDocument(documentId: string): Promise<void> {
   // Get document info first
   const { data: doc, error: fetchError } = await supabase
@@ -131,6 +178,16 @@ export async function deleteDocument(documentId: string): Promise<void> {
 
   if (fetchError || !doc) {
     throw new Error('Document not found');
+  }
+
+  // Delete chunks first
+  const { error: chunksError } = await supabase
+    .from('document_chunks')
+    .delete()
+    .eq('document_id', documentId);
+
+  if (chunksError) {
+    console.error('Chunks delete error:', chunksError);
   }
 
   // Delete from storage
@@ -163,18 +220,26 @@ export function getDocumentUrl(storagePath: string): string {
   return data.publicUrl;
 }
 
-// Extract text from document for context (simplified - real implementation would use PDF parsing)
-export async function extractDocumentContext(doc: UploadedDocument): Promise<string> {
-  if (doc.extracted_text) {
-    return doc.extracted_text;
+// Get document processing status
+export async function getDocumentStatus(documentId: string): Promise<{ processed: boolean; pageCount: number }> {
+  const { data, error } = await supabase
+    .from('uploaded_documents')
+    .select('embeddings_generated, page_count')
+    .eq('id', documentId)
+    .single();
+
+  if (error || !data) {
+    return { processed: false, pageCount: 0 };
   }
 
-  // For PDFs and other documents, we'd need server-side processing
-  // For now, return a placeholder indicating the document is attached
-  return `[Document attached: ${doc.file_name} (${formatFileSize(doc.file_size)})]`;
+  return {
+    processed: data.embeddings_generated || false,
+    pageCount: data.page_count || 0,
+  };
 }
 
-function formatFileSize(bytes: number): string {
+// Format file size helper
+export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
