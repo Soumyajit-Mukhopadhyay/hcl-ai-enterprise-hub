@@ -1,20 +1,26 @@
 import { useRef, useEffect, useState } from 'react';
-import { MessageSquare, LayoutDashboard } from 'lucide-react';
+import { MessageSquare, LayoutDashboard, Briefcase } from 'lucide-react';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { AgentReasoningPanel } from '@/components/chat/AgentReasoningPanel';
 import { ChatHistorySidebar } from '@/components/chat/ChatHistorySidebar';
+import { PDFCitationViewer } from '@/components/chat/PDFCitationViewer';
+import { GlassBoxVisualization } from '@/components/chat/GlassBoxVisualization';
 import { DomainTabs } from '@/components/dashboard/DomainTabs';
 import { RealtimeDashboard } from '@/components/dashboard/RealtimeDashboard';
 import { QuickActions } from '@/components/dashboard/QuickActions';
+import { HRWorkflowPanel } from '@/components/workflows/HRWorkflowPanel';
 import { useChatSession } from '@/hooks/useChatSession';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import type { Citation } from '@/types/agent';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [showDashboard, setShowDashboard] = useState(true);
+  const [showWorkflows, setShowWorkflows] = useState(false);
+  const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const {
