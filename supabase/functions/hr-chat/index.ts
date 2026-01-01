@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,9 +46,6 @@ Key risks identified:
 3. Talent acquisition and retention in competitive markets
 4. Currency fluctuation impacts on revenue
 5. Cybersecurity threats requiring robust infrastructure
-6. Regulatory compliance across multiple jurisdictions
-7. Client concentration risk management
-8. Supply chain disruptions
 
 ### Awards & Recognition (Page 60-65)
 - Leader in Gartner Magic Quadrant for IT Services
@@ -58,19 +56,15 @@ Key risks identified:
 ### HR Policies Reference
 - **Annual Leave**: 21 working days per calendar year
 - **Sick Leave**: 10 days per year
-- **Maternity Leave**: 26 weeks fully paid (as per statutory requirements)
+- **Maternity Leave**: 26 weeks fully paid
 - **Paternity Leave**: 2 weeks paid leave
 - **Work From Home**: Hybrid model - 2-3 days per week based on role
-- **Leave Carry Forward**: Maximum 10 days to next year
 
 ### IT Support Information
 - **Service Desk Hours**: 24/7 global support
 - **SLA Response Time**: Critical - 15 mins, High - 2 hours, Medium - 8 hours
-- **Password Reset**: Self-service portal available 24/7
-- **Hardware Requests**: 5-7 business days processing
 `;
 
-// HR Domain Knowledge
 const HR_DOMAIN_KNOWLEDGE = `
 ## HR Operations Knowledge Base
 
@@ -92,15 +86,8 @@ const HR_DOMAIN_KNOWLEDGE = `
 - Payslips available on employee portal
 - Tax declarations: April-January
 - Investment proofs: January 15 deadline
-
-### Performance Management
-- Annual review cycle: April
-- Mid-year review: October
-- 360-degree feedback enabled
-- Rating scale: 1-5 (Outstanding to Needs Improvement)
 `;
 
-// IT Service Desk Knowledge
 const IT_DOMAIN_KNOWLEDGE = `
 ## IT Service Desk Knowledge Base
 
@@ -108,17 +95,10 @@ const IT_DOMAIN_KNOWLEDGE = `
 - **Password Reset**: Use self-service portal or contact IT desk
 - **VPN Issues**: Check network, restart client, verify credentials
 - **Email Access**: Verify Outlook configuration, check server status
-- **Laptop Performance**: Clear temp files, check RAM usage, restart
-
-### Asset Management
-- Laptop refresh cycle: 3 years
-- Monitor allocation: Based on role
-- Mobile devices: Manager approval required
 
 ### Security Policies
 - Password policy: 12+ characters, special characters required
 - MFA: Mandatory for all corporate applications
-- Data classification: Public, Internal, Confidential, Restricted
 `;
 
 interface ChatMessage {
@@ -126,126 +106,171 @@ interface ChatMessage {
   content: string;
 }
 
-interface ConversationContext {
-  messages: ChatMessage[];
-  summary?: string;
-  documentContext?: string;
+interface SemanticSearchResult {
+  chunkId: string;
+  documentId: string;
+  documentName: string;
+  pageNumber: number;
+  content: string;
+  snippet: string;
+  score: number;
 }
 
-function buildSystemPrompt(domain: string, documentContext?: string): string {
-  let basePrompt = `You are HCL Agent, an intelligent enterprise assistant for HCLTech employees. You are powered by advanced AI and have access to comprehensive knowledge about HCLTech.
+// Perform semantic search on uploaded documents
+async function performSemanticSearch(query: string, sessionId?: string): Promise<SemanticSearchResult[]> {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get chunks with embeddings
+    let chunksQuery = supabase
+      .from('document_chunks')
+      .select(`
+        id, content, page_number, embedding, document_id,
+        uploaded_documents!inner (id, file_name, session_id)
+      `)
+      .not('embedding', 'is', null)
+      .limit(100);
+
+    if (sessionId) {
+      chunksQuery = chunksQuery.eq('uploaded_documents.session_id', sessionId);
+    }
+
+    const { data: chunks, error } = await chunksQuery;
+
+    if (error || !chunks?.length) {
+      console.log('No document chunks found for search');
+      return [];
+    }
+
+    // Generate query embedding
+    const queryEmbedding = generateQueryEmbedding(query);
+
+    // Score chunks
+    const scored = chunks.map(chunk => {
+      const similarity = cosineSimilarity(queryEmbedding, chunk.embedding as number[]);
+      const keywordBoost = keywordScore(query, chunk.content);
+      return {
+        chunkId: chunk.id,
+        documentId: chunk.document_id,
+        documentName: (chunk.uploaded_documents as any)?.file_name || 'Unknown',
+        pageNumber: chunk.page_number || 1,
+        content: chunk.content,
+        snippet: chunk.content.slice(0, 300),
+        score: similarity * 0.7 + Math.min(keywordBoost * 0.1, 0.3),
+      };
+    });
+
+    return scored
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .filter(r => r.score > 0.05);
+  } catch (e) {
+    console.error('Semantic search error:', e);
+    return [];
+  }
+}
+
+function generateQueryEmbedding(text: string): number[] {
+  const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'this', 'that', 'it', 'what', 'how', 'why', 'when', 'where', 'who']);
+  
+  const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+  const wordFreq = new Map<string, number>();
+  for (const word of words) wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
+  
+  const embedding = new Array(256).fill(0);
+  for (const [word, freq] of wordFreq) {
+    let hash = 0;
+    for (let i = 0; i < word.length; i++) { hash = ((hash << 5) - hash) + word.charCodeAt(i); hash = hash & hash; }
+    embedding[Math.abs(hash) % 256] += freq * (1 + Math.log(freq));
+  }
+  
+  const mag = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0));
+  if (mag > 0) for (let i = 0; i < embedding.length; i++) embedding[i] /= mag;
+  return embedding;
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (!a || !b || a.length !== b.length) return 0;
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; magA += a[i] * a[i]; magB += b[i] * b[i]; }
+  const mag = Math.sqrt(magA) * Math.sqrt(magB);
+  return mag > 0 ? dot / mag : 0;
+}
+
+function keywordScore(query: string, content: string): number {
+  const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const contentLower = content.toLowerCase();
+  let score = 0;
+  for (const word of words) {
+    const matches = contentLower.match(new RegExp(word, 'gi'));
+    if (matches) score += matches.length;
+  }
+  return score;
+}
+
+function buildSystemPrompt(domain: string, documentContext?: string, searchResults?: SemanticSearchResult[]): string {
+  let basePrompt = `You are HCL Agent, an intelligent enterprise assistant for HCLTech employees. You are powered by advanced AI and have access to comprehensive knowledge.
 
 ## Your Capabilities:
-1. **Knowledge Retrieval (RAG)**: Answer questions about HCLTech financials, policies, procedures using cited sources
-2. **Action Execution**: Help with leave applications, meeting scheduling, ticket creation, etc.
+1. **Knowledge Retrieval (RAG)**: Answer questions using cited sources from documents
+2. **Action Execution**: Help with leave applications, meeting scheduling, ticket creation
 3. **Domain Expertise**: HR Operations, IT Service Desk, Developer Support
 
 ## Response Guidelines:
-- Always be professional, helpful, and concise
-- When citing information, include the source page number in format: [Page X]
-- For action requests, confirm the details before proceeding
+- Be professional, helpful, and concise
+- When citing information, include source: [DocumentName, Page X]
+- For action requests, confirm details before proceeding
 - If unsure, ask clarifying questions
-- Use empathetic tone for sensitive HR matters
-- Provide risk assessment for actions (Low/Medium/High)
 
 ## Citation Format:
-When providing factual information, cite sources like this:
-"HCLTech's revenue was ₹117,055 Crores [Page 12]"
-
-## Action Response Format:
-When user requests an action, respond with:
-1. Confirmation of understanding
-2. Structured JSON action payload
-3. Risk level assessment
-4. Next steps
+"HCLTech's revenue was ₹117,055 Crores [HCL-AR-2025, Page 12]"
 
 ${HCLTECH_KNOWLEDGE}
-
 ${HR_DOMAIN_KNOWLEDGE}
-
 ${IT_DOMAIN_KNOWLEDGE}
 `;
 
   if (domain === 'hr') {
-    basePrompt += `\n\n## Current Domain Focus: HR Operations
-You are specialized in HR queries including leave management, payroll, onboarding, performance reviews, and employee policies.`;
+    basePrompt += `\n\n## Current Focus: HR Operations\nSpecialized in leave management, payroll, onboarding, performance reviews.`;
   } else if (domain === 'it') {
-    basePrompt += `\n\n## Current Domain Focus: IT Service Desk
-You are specialized in IT support including password resets, hardware issues, software installations, and security queries.`;
+    basePrompt += `\n\n## Current Focus: IT Service Desk\nSpecialized in password resets, hardware issues, software installations.`;
   } else if (domain === 'dev') {
-    basePrompt += `\n\n## Current Domain Focus: Developer Support
-You are specialized in developer queries including code reviews, legacy system documentation, API integrations, and technical guidance.`;
+    basePrompt += `\n\n## Current Focus: Developer Support\nSpecialized in code reviews, API integrations, technical guidance.`;
+  }
+
+  // Add uploaded document context from semantic search
+  if (searchResults && searchResults.length > 0) {
+    basePrompt += `\n\n## Relevant Document Excerpts (from uploaded files):\n`;
+    searchResults.forEach((result, i) => {
+      basePrompt += `\n### [${result.documentName}, Page ${result.pageNumber}]\n${result.content}\n`;
+    });
   }
 
   if (documentContext) {
-    basePrompt += `\n\n## Uploaded Document Context:\n${documentContext}`;
+    basePrompt += `\n\n## Additional Document Context:\n${documentContext}`;
   }
 
   return basePrompt;
 }
 
 function summarizeConversation(messages: ChatMessage[]): string {
-  if (messages.length <= 10) {
-    return '';
-  }
-
-  // Create a weighted summary of older messages
-  const olderMessages = messages.slice(0, -10);
-  const summary = olderMessages
-    .filter(m => m.role !== 'system')
-    .map((m, i) => {
-      const weight = 0.3 + (i / olderMessages.length) * 0.4; // 0.3 to 0.7 weight
-      const truncatedContent = m.content.length > 100 
-        ? m.content.substring(0, 100) + '...' 
-        : m.content;
-      return `[${m.role}]: ${truncatedContent}`;
-    })
+  if (messages.length <= 10) return '';
+  const older = messages.slice(0, -10);
+  const summary = older.filter(m => m.role !== 'system')
+    .map(m => `[${m.role}]: ${m.content.slice(0, 100)}${m.content.length > 100 ? '...' : ''}`)
     .join('\n');
-
-  return `## Conversation Summary (Earlier Context):\n${summary}\n\n---\n`;
-}
-
-function buildMessagesWithContext(context: ConversationContext, domain: string): ChatMessage[] {
-  const systemPrompt = buildSystemPrompt(domain, context.documentContext);
-  
-  // Start with system prompt
-  const messages: ChatMessage[] = [
-    { role: 'system', content: systemPrompt }
-  ];
-
-  // Add summary if conversation is long
-  if (context.messages.length > 10 && context.summary) {
-    messages.push({
-      role: 'system',
-      content: context.summary
-    });
-  }
-
-  // Add recent messages (last 10 for context)
-  const recentMessages = context.messages.length > 10 
-    ? context.messages.slice(-10) 
-    : context.messages;
-
-  // Apply decay weights - more recent messages have higher weight
-  recentMessages.forEach((msg, index) => {
-    const weight = 0.5 + (index / recentMessages.length) * 0.5; // 0.5 to 1.0 weight
-    messages.push({
-      role: msg.role,
-      content: msg.content
-    });
-  });
-
-  return messages;
+  return `## Conversation Summary:\n${summary}\n\n---\n`;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages, domain = 'general', documentContext, stream = true } = await req.json();
+    const { messages, domain = 'general', documentContext, sessionId, stream = true } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -253,17 +278,32 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log(`Processing chat request - Domain: ${domain}, Messages: ${messages.length}`);
+    console.log(`Processing chat - Domain: ${domain}, Messages: ${messages.length}, Session: ${sessionId}`);
 
-    // Build conversation context
-    const context: ConversationContext = {
-      messages: messages,
-      summary: messages.length > 10 ? summarizeConversation(messages) : undefined,
-      documentContext: documentContext
-    };
+    // Get latest user message for semantic search
+    const latestUserMessage = [...messages].reverse().find(m => m.role === 'user');
+    let searchResults: SemanticSearchResult[] = [];
+    
+    if (latestUserMessage) {
+      searchResults = await performSemanticSearch(latestUserMessage.content, sessionId);
+      console.log(`Found ${searchResults.length} relevant document chunks`);
+    }
 
-    // Build messages with proper context
-    const contextualMessages = buildMessagesWithContext(context, domain);
+    // Build system prompt with search results
+    const systemPrompt = buildSystemPrompt(domain, documentContext, searchResults);
+    
+    // Build messages
+    const contextualMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt }];
+    
+    // Add summary for long conversations
+    if (messages.length > 10) {
+      const summary = summarizeConversation(messages);
+      if (summary) contextualMessages.push({ role: 'system', content: summary });
+    }
+
+    // Add recent messages
+    const recent = messages.length > 10 ? messages.slice(-10) : messages;
+    contextualMessages.push(...recent);
 
     console.log(`Sending ${contextualMessages.length} messages to AI`);
 
@@ -276,7 +316,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: contextualMessages,
-        stream: stream,
+        stream,
         temperature: 0.7,
         max_tokens: 2048,
       }),
@@ -287,34 +327,21 @@ serve(async (req) => {
       console.error("AI gateway error:", response.status, errorText);
       
       if (response.status === 429) {
-        return new Response(JSON.stringify({ 
-          error: "Rate limit exceeded. Please wait a moment and try again." 
-        }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait and try again." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      
       if (response.status === 402) {
-        return new Response(JSON.stringify({ 
-          error: "AI credits exhausted. Please add credits to continue." 
-        }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
     if (stream) {
       return new Response(response.body, {
-        headers: { 
-          ...corsHeaders, 
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          "Connection": "keep-alive"
-        },
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
       });
     } else {
       const data = await response.json();
@@ -324,11 +351,8 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error("HR Chat error:", error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error occurred" 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

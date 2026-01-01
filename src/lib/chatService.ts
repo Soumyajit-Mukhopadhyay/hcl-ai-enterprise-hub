@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Message, Citation, ActionSchema } from '@/types/agent';
-import { v4 as uuidv4 } from 'uuid';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hr-chat`;
 
@@ -75,11 +74,18 @@ export async function updateSessionTitle(sessionId: string, firstMessage: string
 }
 
 export async function streamChatResponse({
-  messages, domain = 'general', documentContext, onDelta, onDone, onError,
+  messages, 
+  domain = 'general', 
+  documentContext, 
+  sessionId,
+  onDelta, 
+  onDone, 
+  onError,
 }: {
   messages: ChatMessage[];
   domain?: string;
   documentContext?: string;
+  sessionId?: string;
   onDelta: (deltaText: string) => void;
   onDone: () => void;
   onError?: (error: Error) => void;
@@ -91,10 +97,21 @@ export async function streamChatResponse({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages, domain, documentContext, stream: true }),
+      body: JSON.stringify({ messages, domain, documentContext, sessionId, stream: true }),
     });
 
-    if (!resp.ok || !resp.body) throw new Error(`Request failed: ${resp.status}`);
+    if (!resp.ok) {
+      const errorData = await resp.json().catch(() => ({}));
+      if (resp.status === 429) {
+        throw new Error(errorData.error || 'Rate limit exceeded. Please wait and try again.');
+      }
+      if (resp.status === 402) {
+        throw new Error(errorData.error || 'AI credits exhausted. Please add credits.');
+      }
+      throw new Error(`Request failed: ${resp.status}`);
+    }
+
+    if (!resp.body) throw new Error('No response body');
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
@@ -120,16 +137,49 @@ export async function streamChatResponse({
     }
     onDone();
   } catch (error) {
+    console.error('Stream chat error:', error);
     onError?.(error instanceof Error ? error : new Error('Unknown error'));
   }
 }
 
 export function parseAIResponse(content: string): { citations: Citation[]; action: ActionSchema | null } {
   const citations: Citation[] = [];
-  const pageRegex = /\[Page\s*(\d+)\]/g;
+  
+  // Parse [DocumentName, Page X] format
+  const docPageRegex = /\[([^\],]+),\s*Page\s*(\d+)\]/g;
   let match;
-  while ((match = pageRegex.exec(content)) !== null) {
-    citations.push({ docId: 'HCL_AR_2024_25', pageNum: parseInt(match[1]), snippet: '' });
+  while ((match = docPageRegex.exec(content)) !== null) {
+    citations.push({ 
+      docId: match[1].trim(), 
+      pageNum: parseInt(match[2]), 
+      snippet: extractSnippet(content, match.index) 
+    });
   }
+  
+  // Also parse simple [Page X] format
+  const simplePageRegex = /\[Page\s*(\d+)\]/g;
+  while ((match = simplePageRegex.exec(content)) !== null) {
+    // Check if already captured by docPageRegex
+    const exists = citations.some(c => c.pageNum === parseInt(match[1]));
+    if (!exists) {
+      citations.push({ 
+        docId: 'HCL-AR-2025', 
+        pageNum: parseInt(match[1]), 
+        snippet: extractSnippet(content, match.index) 
+      });
+    }
+  }
+  
   return { citations, action: null };
+}
+
+function extractSnippet(content: string, citationIndex: number): string {
+  // Extract ~100 chars before the citation as snippet
+  const start = Math.max(0, citationIndex - 100);
+  const end = citationIndex;
+  let snippet = content.slice(start, end).trim();
+  
+  // Clean up snippet
+  if (start > 0) snippet = '...' + snippet;
+  return snippet.replace(/\n/g, ' ').trim();
 }
