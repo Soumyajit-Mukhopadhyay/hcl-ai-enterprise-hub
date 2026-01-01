@@ -14,7 +14,227 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      action_audit_log: {
+        Row: {
+          action_data: Json
+          action_type: string
+          approved_by: string | null
+          created_at: string
+          executed_at: string | null
+          id: string
+          risk_level: string
+          session_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          action_data: Json
+          action_type: string
+          approved_by?: string | null
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          risk_level: string
+          session_id?: string | null
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          action_data?: Json
+          action_type?: string
+          approved_by?: string | null
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          risk_level?: string
+          session_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_audit_log_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          action_data: Json | null
+          citations: Json | null
+          content: string
+          created_at: string
+          id: string
+          risk_level: string | null
+          role: string
+          session_id: string
+          token_count: number | null
+          weight: number | null
+        }
+        Insert: {
+          action_data?: Json | null
+          citations?: Json | null
+          content: string
+          created_at?: string
+          id?: string
+          risk_level?: string | null
+          role: string
+          session_id: string
+          token_count?: number | null
+          weight?: number | null
+        }
+        Update: {
+          action_data?: Json | null
+          citations?: Json | null
+          content?: string
+          created_at?: string
+          id?: string
+          risk_level?: string | null
+          role?: string
+          session_id?: string
+          token_count?: number | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          domain: string | null
+          id: string
+          is_archived: boolean | null
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          domain?: string | null
+          id?: string
+          is_archived?: boolean | null
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          domain?: string | null
+          id?: string
+          is_archived?: boolean | null
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      document_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          document_id: string
+          embedding: Json | null
+          id: string
+          page_number: number | null
+          section_title: string | null
+          token_count: number | null
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string
+          document_id: string
+          embedding?: Json | null
+          id?: string
+          page_number?: number | null
+          section_title?: string | null
+          token_count?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          document_id?: string
+          embedding?: Json | null
+          id?: string
+          page_number?: number | null
+          section_title?: string | null
+          token_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uploaded_documents: {
+        Row: {
+          created_at: string
+          embeddings_generated: boolean | null
+          extracted_text: string | null
+          file_name: string
+          file_size: number
+          file_type: string
+          id: string
+          page_count: number | null
+          session_id: string | null
+          storage_path: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          embeddings_generated?: boolean | null
+          extracted_text?: string | null
+          file_name: string
+          file_size: number
+          file_type: string
+          id?: string
+          page_count?: number | null
+          session_id?: string | null
+          storage_path: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          embeddings_generated?: boolean | null
+          extracted_text?: string | null
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          page_count?: number | null
+          session_id?: string | null
+          storage_path?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uploaded_documents_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
