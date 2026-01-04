@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
-import { MessageSquare, Brain, Trash2, LogOut, Calendar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MessageSquare, Brain, Trash2, LogOut, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -10,6 +11,12 @@ import { UserContextPanel } from '@/components/context/UserContextPanel';
 import { CalendarPanel } from '@/components/calendar/CalendarPanel';
 import { ApprovalPanel } from '@/components/approvals/ApprovalPanel';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
+import { PayslipWorkflow } from '@/components/workflows/PayslipWorkflow';
+import { ReimbursementWorkflow } from '@/components/workflows/ReimbursementWorkflow';
+import { TrainingWorkflow } from '@/components/workflows/TrainingWorkflow';
+import { DeploymentWorkflow } from '@/components/workflows/DeploymentWorkflow';
+import { AccessRequestWorkflow } from '@/components/workflows/AccessRequestWorkflow';
+import { IncidentWorkflow } from '@/components/workflows/IncidentWorkflow';
 import { useChatSession } from '@/hooks/useChatSession';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -17,6 +24,7 @@ import { toast } from 'sonner';
 import type { Citation } from '@/types/agent';
 
 const Index = () => {
+  const navigate = useNavigate();
   const { profile, role, signOut } = useAuth();
   const [showGlassBox, setShowGlassBox] = useState(true);
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
@@ -80,6 +88,16 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-2">
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/dashboard')}
+              className="gap-1 h-8"
+            >
+              <BarChart3 className="w-3 h-3" />
+              <span className="hidden sm:inline text-xs">Dashboard</span>
+            </Button>
+
+            <Button
               variant={showGlassBox ? "default" : "outline"}
               size="sm"
               onClick={() => setShowGlassBox(!showGlassBox)}
@@ -115,10 +133,27 @@ const Index = () => {
 
         <div className="flex-1 flex overflow-hidden">
           {/* Left Context Panel */}
-          <div className="w-72 border-r border-border bg-muted/30 overflow-auto p-3 space-y-3 hidden lg:block">
+          <div className="w-80 border-r border-border bg-muted/30 overflow-auto p-3 space-y-3 hidden lg:block">
             <UserContextPanel />
             <NotificationPanel />
             {(role === 'hr' || role === 'developer') && <ApprovalPanel />}
+            
+            {/* Role-specific Quick Actions */}
+            {(role === 'employee' || role === 'hr') && (
+              <>
+                <PayslipWorkflow />
+                <ReimbursementWorkflow />
+                <TrainingWorkflow />
+              </>
+            )}
+            
+            {role === 'developer' && (
+              <>
+                <DeploymentWorkflow />
+                <AccessRequestWorkflow />
+                <IncidentWorkflow />
+              </>
+            )}
           </div>
 
           {/* Main Chat Area */}

@@ -138,22 +138,6 @@ const TOOLS = [
   {
     type: "function",
     function: {
-      name: "create_it_ticket",
-      description: "Create an IT support ticket",
-      parameters: {
-        type: "object",
-        properties: {
-          category: { type: "string", enum: ["password", "hardware", "software", "network", "access", "other"], description: "Issue category" },
-          priority: { type: "string", enum: ["low", "medium", "high", "critical"], description: "Priority level" },
-          description: { type: "string", description: "Detailed description of the issue" }
-        },
-        required: ["category", "priority", "description"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
       name: "create_hr_ticket",
       description: "Create an HR ticket for sensitive or complex issues",
       parameters: {
@@ -179,6 +163,53 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "get_payslip",
+      description: "Generate and retrieve the user's payslip for a specific month",
+      parameters: {
+        type: "object",
+        properties: {
+          month: { type: "number", description: "Month (1-12)" },
+          year: { type: "number", description: "Year (e.g., 2024)" }
+        },
+        required: ["month", "year"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "submit_reimbursement",
+      description: "Submit a reimbursement request for expenses",
+      parameters: {
+        type: "object",
+        properties: {
+          category: { type: "string", enum: ["travel", "food", "equipment", "training", "medical", "other"], description: "Expense category" },
+          amount: { type: "number", description: "Amount in INR" },
+          description: { type: "string", description: "Description of the expense" }
+        },
+        required: ["category", "amount", "description"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "request_training",
+      description: "Request enrollment in a training program or course",
+      parameters: {
+        type: "object",
+        properties: {
+          training_name: { type: "string", description: "Name of the training/course" },
+          training_type: { type: "string", enum: ["technical", "soft_skills", "certification", "leadership", "compliance"], description: "Type of training" },
+          priority: { type: "string", enum: ["low", "medium", "high"], description: "Priority level" }
+        },
+        required: ["training_name", "training_type"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "propose_code_change",
       description: "Propose a code change to fix an issue (requires developer approval)",
       parameters: {
@@ -197,7 +228,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "analyze_error",
-      description: "Analyze an error or bug report",
+      description: "Analyze an error or bug report and suggest fixes",
       parameters: {
         type: "object",
         properties: {
@@ -205,6 +236,55 @@ const TOOLS = [
           context: { type: "string", description: "Additional context about the error" }
         },
         required: ["error_message"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "request_deployment",
+      description: "Request deployment of a service to an environment",
+      parameters: {
+        type: "object",
+        properties: {
+          service_name: { type: "string", description: "Name of the service" },
+          environment: { type: "string", enum: ["development", "staging", "production"], description: "Target environment" },
+          version: { type: "string", description: "Version to deploy" }
+        },
+        required: ["service_name", "environment"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "request_access",
+      description: "Request access to a resource like a repository, database, or server",
+      parameters: {
+        type: "object",
+        properties: {
+          resource_type: { type: "string", enum: ["repository", "database", "server", "api", "dashboard"], description: "Type of resource" },
+          resource_name: { type: "string", description: "Name of the resource" },
+          access_level: { type: "string", enum: ["read", "write", "admin"], description: "Level of access needed" },
+          reason: { type: "string", description: "Reason for access" }
+        },
+        required: ["resource_type", "resource_name", "access_level", "reason"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "report_incident",
+      description: "Report a production incident or service issue",
+      parameters: {
+        type: "object",
+        properties: {
+          service_name: { type: "string", description: "Affected service" },
+          severity: { type: "string", enum: ["low", "medium", "high", "critical"], description: "Incident severity" },
+          description: { type: "string", description: "Description of the incident" }
+        },
+        required: ["service_name", "severity", "description"]
       }
     }
   }
@@ -366,14 +446,34 @@ When citing information, use: [Source Name, Page X]
 Example: "HCLTech's revenue was ₹117,055 Crores [HCL-AR-2025, Page 12]"
 
 ## TOOL CALLING
-You have access to tools for:
-- apply_leave: Submit leave requests (auto-calculates risk)
-- schedule_meeting: Book meetings (checks calendar, sends for approval)
-- create_it_ticket: IT support tickets
-- create_hr_ticket: HR tickets (use for sensitive topics)
-- get_leave_balance: Check leave balance
-- propose_code_change: Suggest code fixes (developer role only)
-- analyze_error: Debug errors (developer role only)
+You have access to tools for various tasks. Always use the appropriate tool:
+
+### HR Tools:
+- apply_leave: Submit leave requests (auto-calculates risk based on balance, duration, blackout periods)
+- schedule_meeting: Book meetings with HR or colleagues
+- create_hr_ticket: Create HR tickets for sensitive/complex issues
+- get_leave_balance: Check user's current leave balance
+- get_payslip: Generate payslip for a specific month/year
+- submit_reimbursement: Submit expense reimbursement requests
+- request_training: Request enrollment in training programs
+
+### Developer Tools (developer role only):
+- propose_code_change: Suggest code fixes (requires approval)
+- analyze_error: Debug errors and suggest root causes
+- request_deployment: Request deployment to environments
+- request_access: Request access to repositories/databases/servers
+- report_incident: Report production incidents
+
+## CONFIDENCE AND ACCURACY
+- For factual queries from documents, express your confidence level
+- If uncertain, say "Based on my analysis..." rather than stating as absolute fact
+- Always prioritize information from uploaded documents over general knowledge
+- Flag when you're making inferences vs stating documented facts
+
+## PROACTIVE ASSISTANCE
+- Suggest relevant actions based on context (e.g., after answering leave policy, ask if they want to apply)
+- Offer to help with related tasks
+- Remind users of pending items relevant to their query
 
 ## KNOWLEDGE BASE
 ${HCLTECH_KNOWLEDGE}
@@ -492,9 +592,14 @@ serve(async (req) => {
 
     // Determine which tools to include based on role
     const roleTools = TOOLS.filter(tool => {
-      const devOnlyTools = ['propose_code_change', 'analyze_error'];
+      const devOnlyTools = ['propose_code_change', 'analyze_error', 'request_deployment', 'request_access', 'report_incident'];
       if (devOnlyTools.includes(tool.function.name)) {
         return userContext.role === 'developer';
+      }
+      // HR-specific tools available to employees and HR
+      const hrTools = ['get_payslip', 'submit_reimbursement', 'request_training'];
+      if (hrTools.includes(tool.function.name)) {
+        return userContext.role === 'employee' || userContext.role === 'hr';
       }
       return true;
     });
