@@ -61,6 +61,51 @@ export type Database = {
           },
         ]
       }
+      approval_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          approver_role: Database["public"]["Enums"]["app_role"]
+          created_at: string
+          description: string | null
+          id: string
+          rejection_reason: string | null
+          request_data: Json
+          request_type: string
+          requester_id: string
+          status: string | null
+          title: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approver_role: Database["public"]["Enums"]["app_role"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          rejection_reason?: string | null
+          request_data: Json
+          request_type: string
+          requester_id: string
+          status?: string | null
+          title: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approver_role?: Database["public"]["Enums"]["app_role"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          rejection_reason?: string | null
+          request_data?: Json
+          request_type?: string
+          requester_id?: string
+          status?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           action_data: Json | null
@@ -141,6 +186,45 @@ export type Database = {
         }
         Relationships: []
       }
+      code_change_requests: {
+        Row: {
+          approved_at: string | null
+          change_reason: string
+          created_at: string
+          developer_id: string | null
+          file_path: string
+          id: string
+          original_code: string | null
+          proposed_code: string
+          requester_id: string | null
+          status: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          change_reason: string
+          created_at?: string
+          developer_id?: string | null
+          file_path: string
+          id?: string
+          original_code?: string | null
+          proposed_code: string
+          requester_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          change_reason?: string
+          created_at?: string
+          developer_id?: string | null
+          file_path?: string
+          id?: string
+          original_code?: string | null
+          proposed_code?: string
+          requester_id?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       document_chunks: {
         Row: {
           chunk_index: number
@@ -184,6 +268,213 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      leave_balance: {
+        Row: {
+          annual_leave: number | null
+          casual_leave: number | null
+          id: string
+          maternity_leave: number | null
+          paternity_leave: number | null
+          sick_leave: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          annual_leave?: number | null
+          casual_leave?: number | null
+          id?: string
+          maternity_leave?: number | null
+          paternity_leave?: number | null
+          sick_leave?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          annual_leave?: number | null
+          casual_leave?: number | null
+          id?: string
+          maternity_leave?: number | null
+          paternity_leave?: number | null
+          sick_leave?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      leave_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          end_date: string
+          id: string
+          leave_type: string
+          reason: string | null
+          rejection_reason: string | null
+          risk_level: string | null
+          start_date: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          end_date: string
+          id?: string
+          leave_type: string
+          reason?: string | null
+          rejection_reason?: string | null
+          risk_level?: string | null
+          start_date: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          end_date?: string
+          id?: string
+          leave_type?: string
+          reason?: string | null
+          rejection_reason?: string | null
+          risk_level?: string | null
+          start_date?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      meetings: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          attendee_id: string
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          google_calendar_link: string | null
+          id: string
+          reason: string | null
+          rejection_reason: string | null
+          requester_id: string
+          scheduled_date: string
+          scheduled_time: string
+          status: string | null
+          title: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attendee_id: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          google_calendar_link?: string | null
+          id?: string
+          reason?: string | null
+          rejection_reason?: string | null
+          requester_id: string
+          scheduled_date: string
+          scheduled_time: string
+          status?: string | null
+          title: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attendee_id?: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          google_calendar_link?: string | null
+          id?: string
+          reason?: string | null
+          rejection_reason?: string | null
+          requester_id?: string
+          scheduled_date?: string
+          scheduled_time?: string
+          status?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          created_at: string
+          id: string
+          is_read: boolean | null
+          message: string
+          related_id: string | null
+          title: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message: string
+          related_id?: string | null
+          title: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          related_id?: string | null
+          title?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          department: string | null
+          email: string
+          employment_type: string | null
+          full_name: string
+          id: string
+          location: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          department?: string | null
+          email: string
+          employment_type?: string | null
+          full_name: string
+          id?: string
+          location?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          department?: string | null
+          email?: string
+          employment_type?: string | null
+          full_name?: string
+          id?: string
+          location?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       uploaded_documents: {
         Row: {
@@ -235,15 +526,46 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "employee" | "hr" | "it" | "developer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -370,6 +692,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["employee", "hr", "it", "developer"],
+    },
   },
 } as const

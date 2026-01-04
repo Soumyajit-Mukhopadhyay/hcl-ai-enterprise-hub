@@ -180,6 +180,7 @@ export function useChatSession() {
         domain,
         documentContext: documentContext || undefined,
         sessionId: sessionId || undefined,
+        userContext: undefined, // Will be passed from component
         onDelta: (delta) => {
           assistantContent += delta;
           setMessages(prev => prev.map(m => 

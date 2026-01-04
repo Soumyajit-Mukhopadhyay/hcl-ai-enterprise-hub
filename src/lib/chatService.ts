@@ -73,11 +73,23 @@ export async function updateSessionTitle(sessionId: string, firstMessage: string
   await supabase.from('chat_sessions').update({ title }).eq('id', sessionId);
 }
 
+interface UserContext {
+  userId?: string;
+  role?: string;
+  fullName?: string;
+  leaveBalance?: {
+    casual_leave: number;
+    sick_leave: number;
+    annual_leave: number;
+  };
+}
+
 export async function streamChatResponse({
   messages, 
   domain = 'general', 
   documentContext, 
   sessionId,
+  userContext,
   onDelta, 
   onDone, 
   onError,
@@ -86,6 +98,7 @@ export async function streamChatResponse({
   domain?: string;
   documentContext?: string;
   sessionId?: string;
+  userContext?: UserContext;
   onDelta: (deltaText: string) => void;
   onDone: () => void;
   onError?: (error: Error) => void;
@@ -97,7 +110,7 @@ export async function streamChatResponse({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages, domain, documentContext, sessionId, stream: true }),
+      body: JSON.stringify({ messages, domain, sessionId, userContext, stream: true }),
     });
 
     if (!resp.ok) {
