@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          access_level: string
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          reason: string | null
+          requester_id: string
+          resource_name: string
+          resource_type: string
+          status: string | null
+        }
+        Insert: {
+          access_level: string
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          requester_id: string
+          resource_name: string
+          resource_type: string
+          status?: string | null
+        }
+        Update: {
+          access_level?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          requester_id?: string
+          resource_name?: string
+          resource_type?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       action_audit_log: {
         Row: {
           action_data: Json
@@ -54,6 +93,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "action_audit_log_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_analytics: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          domain: string
+          has_citation: boolean | null
+          id: string
+          query_type: string
+          response_time_ms: number | null
+          risk_level: string | null
+          session_id: string | null
+          token_count: number | null
+          tool_called: string | null
+          tool_success: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          domain?: string
+          has_citation?: boolean | null
+          id?: string
+          query_type?: string
+          response_time_ms?: number | null
+          risk_level?: string | null
+          session_id?: string | null
+          token_count?: number | null
+          tool_called?: string | null
+          tool_success?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          domain?: string
+          has_citation?: boolean | null
+          id?: string
+          query_type?: string
+          response_time_ms?: number | null
+          risk_level?: string | null
+          session_id?: string | null
+          token_count?: number | null
+          tool_called?: string | null
+          tool_success?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_analytics_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "chat_sessions"
@@ -225,6 +320,45 @@ export type Database = {
         }
         Relationships: []
       }
+      deployment_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          deployed_at: string | null
+          environment: string
+          id: string
+          requester_id: string
+          service_name: string
+          status: string | null
+          version: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          deployed_at?: string | null
+          environment: string
+          id?: string
+          requester_id: string
+          service_name: string
+          status?: string | null
+          version?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          deployed_at?: string | null
+          environment?: string
+          id?: string
+          requester_id?: string
+          service_name?: string
+          status?: string | null
+          version?: string | null
+        }
+        Relationships: []
+      }
       document_chunks: {
         Row: {
           chunk_index: number
@@ -268,6 +402,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      incident_reports: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          reporter_id: string
+          resolution: string | null
+          resolved_at: string | null
+          root_cause: string | null
+          service_name: string
+          severity: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          reporter_id: string
+          resolution?: string | null
+          resolved_at?: string | null
+          root_cause?: string | null
+          service_name: string
+          severity: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          reporter_id?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          root_cause?: string | null
+          service_name?: string
+          severity?: string
+          status?: string | null
+        }
+        Relationships: []
       }
       leave_balance: {
         Row: {
@@ -437,6 +610,36 @@ export type Database = {
         }
         Relationships: []
       }
+      payslip_requests: {
+        Row: {
+          created_at: string
+          id: string
+          month: number
+          payslip_data: Json | null
+          status: string | null
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month: number
+          payslip_data?: Json | null
+          status?: string | null
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: number
+          payslip_data?: Json | null
+          status?: string | null
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -472,6 +675,84 @@ export type Database = {
           id?: string
           location?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reimbursement_requests: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          receipt_path: string | null
+          rejection_reason: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          receipt_path?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          receipt_path?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      training_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          priority: string | null
+          status: string | null
+          training_name: string
+          training_type: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          priority?: string | null
+          status?: string | null
+          training_name: string
+          training_type: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          priority?: string | null
+          status?: string | null
+          training_name?: string
+          training_type?: string
           user_id?: string
         }
         Relationships: []
