@@ -53,57 +53,38 @@ Key risks identified:
 - Great Place to Work certified
 - Top Employer Institute recognition in 25 countries
 
-### HR Policies Reference
-- **Annual Leave**: 21 working days per calendar year
+### HR Policies Reference (Page 70-85)
+- **Annual Leave**: 20 working days per calendar year
+- **Casual Leave**: 12 days per year
 - **Sick Leave**: 10 days per year
-- **Maternity Leave**: 26 weeks fully paid
-- **Paternity Leave**: 2 weeks paid leave
+- **Maternity Leave**: 180 days (26 weeks) fully paid
+- **Paternity Leave**: 15 days paid leave
 - **Work From Home**: Hybrid model - 2-3 days per week based on role
+- **Meeting Scheduling**: All meetings require reason and manager approval for external attendees
+- **Critical Period**: December 15 - January 15 is blackout period for leave
 
-### IT Support Information
+### IT Support Information (Page 88-92)
 - **Service Desk Hours**: 24/7 global support
 - **SLA Response Time**: Critical - 15 mins, High - 2 hours, Medium - 8 hours
+- **Password Policy**: 12+ characters, special characters, 90-day rotation
 `;
 
-const HR_DOMAIN_KNOWLEDGE = `
-## HR Operations Knowledge Base
-
-### Leave Management
-- Leave applications are processed within 24 hours of manager approval
-- Emergency leave can be applied retroactively within 3 days
-- Leave balance is calculated on a calendar year basis
-- Encashment allowed for unused annual leave (max 10 days)
-
-### Onboarding Process
-1. Document verification (1-2 days)
-2. Background verification (3-5 days)
-3. System access provisioning (1 day)
-4. Asset allocation (laptop, ID card) (1-2 days)
-5. Welcome kit and orientation (Day 1)
-
-### Payroll Information
-- Salary credit: Last working day of month
-- Payslips available on employee portal
-- Tax declarations: April-January
-- Investment proofs: January 15 deadline
-`;
-
-const IT_DOMAIN_KNOWLEDGE = `
-## IT Service Desk Knowledge Base
-
-### Common Issues & Resolutions
-- **Password Reset**: Use self-service portal or contact IT desk
-- **VPN Issues**: Check network, restart client, verify credentials
-- **Email Access**: Verify Outlook configuration, check server status
-
-### Security Policies
-- Password policy: 12+ characters, special characters required
-- MFA: Mandatory for all corporate applications
-`;
+const SENSITIVE_TOPICS = ['harassment', 'discrimination', 'grievance', 'complaint', 'mental health', 'bullying', 'abuse', 'assault', 'termination dispute', 'unfair treatment'];
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
+}
+
+interface UserContext {
+  userId?: string;
+  role?: string;
+  fullName?: string;
+  leaveBalance?: {
+    casual_leave: number;
+    sick_leave: number;
+    annual_leave: number;
+  };
 }
 
 interface SemanticSearchResult {
@@ -116,6 +97,156 @@ interface SemanticSearchResult {
   score: number;
 }
 
+// Tool definitions for function calling
+const TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "apply_leave",
+      description: "Submit a leave request for approval. Risk is assessed automatically.",
+      parameters: {
+        type: "object",
+        properties: {
+          leave_type: { type: "string", enum: ["annual", "casual", "sick", "maternity", "paternity"], description: "Type of leave" },
+          start_date: { type: "string", description: "Start date in YYYY-MM-DD format" },
+          end_date: { type: "string", description: "End date in YYYY-MM-DD format" },
+          reason: { type: "string", description: "Reason for leave" }
+        },
+        required: ["leave_type", "start_date", "end_date", "reason"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "schedule_meeting",
+      description: "Schedule a meeting with HR or another employee",
+      parameters: {
+        type: "object",
+        properties: {
+          attendee_email: { type: "string", description: "Email of the person to meet" },
+          title: { type: "string", description: "Meeting title" },
+          reason: { type: "string", description: "Reason for the meeting" },
+          preferred_date: { type: "string", description: "Preferred date in YYYY-MM-DD format" },
+          preferred_time: { type: "string", description: "Preferred time in HH:MM format" },
+          duration_minutes: { type: "number", description: "Duration in minutes (default 30)" }
+        },
+        required: ["attendee_email", "title", "reason", "preferred_date", "preferred_time"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_it_ticket",
+      description: "Create an IT support ticket",
+      parameters: {
+        type: "object",
+        properties: {
+          category: { type: "string", enum: ["password", "hardware", "software", "network", "access", "other"], description: "Issue category" },
+          priority: { type: "string", enum: ["low", "medium", "high", "critical"], description: "Priority level" },
+          description: { type: "string", description: "Detailed description of the issue" }
+        },
+        required: ["category", "priority", "description"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_hr_ticket",
+      description: "Create an HR ticket for sensitive or complex issues",
+      parameters: {
+        type: "object",
+        properties: {
+          category: { type: "string", enum: ["grievance", "policy_query", "benefits", "payroll", "other"], description: "Ticket category" },
+          priority: { type: "string", enum: ["low", "medium", "high", "critical"], description: "Priority level" },
+          description: { type: "string", description: "Detailed description" },
+          is_confidential: { type: "boolean", description: "Whether this is a confidential matter" }
+        },
+        required: ["category", "priority", "description"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_leave_balance",
+      description: "Check the user's current leave balance",
+      parameters: { type: "object", properties: {}, required: [] }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "propose_code_change",
+      description: "Propose a code change to fix an issue (requires developer approval)",
+      parameters: {
+        type: "object",
+        properties: {
+          file_path: { type: "string", description: "Path to the file to modify" },
+          original_code: { type: "string", description: "Original code snippet" },
+          proposed_code: { type: "string", description: "Proposed fixed code" },
+          change_reason: { type: "string", description: "Explanation of the fix" }
+        },
+        required: ["file_path", "proposed_code", "change_reason"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "analyze_error",
+      description: "Analyze an error or bug report",
+      parameters: {
+        type: "object",
+        properties: {
+          error_message: { type: "string", description: "The error message or stack trace" },
+          context: { type: "string", description: "Additional context about the error" }
+        },
+        required: ["error_message"]
+      }
+    }
+  }
+];
+
+// Check if message contains sensitive topics
+function isSensitiveTopic(message: string): boolean {
+  const lower = message.toLowerCase();
+  return SENSITIVE_TOPICS.some(topic => lower.includes(topic));
+}
+
+// Calculate risk level for leave requests
+function calculateLeaveRisk(leaveType: string, startDate: string, endDate: string, balance: any): { level: string; reason: string } {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  
+  // Check blackout period
+  const startMonth = start.getMonth() + 1;
+  const startDay = start.getDate();
+  if ((startMonth === 12 && startDay >= 15) || (startMonth === 1 && startDay <= 15)) {
+    return { level: 'high', reason: 'Request falls in critical blackout period (Dec 15 - Jan 15)' };
+  }
+
+  // Check balance
+  const balanceKey = `${leaveType}_leave`;
+  const available = balance?.[balanceKey] || 0;
+  if (days > available) {
+    return { level: 'high', reason: `Insufficient balance: requesting ${days} days, only ${available} available` };
+  }
+
+  if (days > 10) {
+    return { level: 'medium', reason: 'Long leave duration (>10 days) requires manager approval' };
+  }
+
+  if (available - days < 3) {
+    return { level: 'medium', reason: 'This will leave you with very low leave balance' };
+  }
+
+  return { level: 'low', reason: 'Request within policy limits' };
+}
+
 // Perform semantic search on uploaded documents
 async function performSemanticSearch(query: string, sessionId?: string): Promise<SemanticSearchResult[]> {
   try {
@@ -123,7 +254,6 @@ async function performSemanticSearch(query: string, sessionId?: string): Promise
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get chunks with embeddings
     let chunksQuery = supabase
       .from('document_chunks')
       .select(`
@@ -140,14 +270,11 @@ async function performSemanticSearch(query: string, sessionId?: string): Promise
     const { data: chunks, error } = await chunksQuery;
 
     if (error || !chunks?.length) {
-      console.log('No document chunks found for search');
       return [];
     }
 
-    // Generate query embedding
     const queryEmbedding = generateQueryEmbedding(query);
 
-    // Score chunks
     const scored = chunks.map(chunk => {
       const similarity = cosineSimilarity(queryEmbedding, chunk.embedding as number[]);
       const keywordBoost = keywordScore(query, chunk.content);
@@ -162,10 +289,7 @@ async function performSemanticSearch(query: string, sessionId?: string): Promise
       };
     });
 
-    return scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5)
-      .filter(r => r.score > 0.05);
+    return scored.sort((a, b) => b.score - a.score).slice(0, 5).filter(r => r.score > 0.05);
   } catch (e) {
     console.error('Semantic search error:', e);
     return [];
@@ -174,7 +298,6 @@ async function performSemanticSearch(query: string, sessionId?: string): Promise
 
 function generateQueryEmbedding(text: string): number[] {
   const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'this', 'that', 'it', 'what', 'how', 'why', 'when', 'where', 'who']);
-  
   const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
   const wordFreq = new Map<string, number>();
   for (const word of words) wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
@@ -210,58 +333,110 @@ function keywordScore(query: string, content: string): number {
   return score;
 }
 
-function buildSystemPrompt(domain: string, documentContext?: string, searchResults?: SemanticSearchResult[]): string {
-  let basePrompt = `You are HCL Agent, an intelligent enterprise assistant for HCLTech employees. You are powered by advanced AI and have access to comprehensive knowledge.
+function buildSystemPrompt(userRole: string, userContext: UserContext, searchResults?: SemanticSearchResult[]): string {
+  let basePrompt = `You are HCL Agent, an intelligent enterprise AI assistant for HCLTech employees. You operate with full transparency and ethical guardrails.
 
-## Your Capabilities:
-1. **Knowledge Retrieval (RAG)**: Answer questions using cited sources from documents
-2. **Action Execution**: Help with leave applications, meeting scheduling, ticket creation
-3. **Domain Expertise**: HR Operations, IT Service Desk, Developer Support
+## YOUR IDENTITY
+- You are the central AI assistant for HCLTech's enterprise portal
+- You have access to the HCL Annual Report, HR policies, and IT knowledge base
+- You can execute actions like leave requests, meeting scheduling, and ticket creation
+- You ALWAYS check the annual report and policies before answering HR questions
 
-## Response Guidelines:
-- Be professional, helpful, and concise
-- When citing information, include source: [DocumentName, Page X]
-- For action requests, confirm details before proceeding
-- If unsure, ask clarifying questions
+## CURRENT USER CONTEXT
+${userContext.fullName ? `- Name: ${userContext.fullName}` : ''}
+- Role: ${userRole?.toUpperCase() || 'EMPLOYEE'}
+${userContext.leaveBalance ? `- Leave Balance: Annual=${userContext.leaveBalance.annual_leave}, Casual=${userContext.leaveBalance.casual_leave}, Sick=${userContext.leaveBalance.sick_leave}` : ''}
 
-## Citation Format:
-"HCLTech's revenue was ₹117,055 Crores [HCL-AR-2025, Page 12]"
+## SAFETY GUARDRAILS
+1. **SENSITIVE TOPICS**: For harassment, discrimination, mental health, or grievances:
+   - NEVER automate or give direct advice
+   - Create an HR ticket immediately with is_confidential=true
+   - Respond with empathy: "I understand this is difficult. I've created a confidential HR ticket. Someone will reach out within 4 hours."
 
+2. **HIGH-RISK ACTIONS**: For actions that significantly impact the user:
+   - Leave during blackout periods → Requires HR approval
+   - Long leaves (>10 days) → Requires manager approval
+   - Code changes → Requires developer approval
+   - Never auto-approve high-risk actions
+
+3. **PRIVACY**: Never share other users' personal data, leave status, or confidential information
+
+## CITATION FORMAT
+When citing information, use: [Source Name, Page X]
+Example: "HCLTech's revenue was ₹117,055 Crores [HCL-AR-2025, Page 12]"
+
+## TOOL CALLING
+You have access to tools for:
+- apply_leave: Submit leave requests (auto-calculates risk)
+- schedule_meeting: Book meetings (checks calendar, sends for approval)
+- create_it_ticket: IT support tickets
+- create_hr_ticket: HR tickets (use for sensitive topics)
+- get_leave_balance: Check leave balance
+- propose_code_change: Suggest code fixes (developer role only)
+- analyze_error: Debug errors (developer role only)
+
+## KNOWLEDGE BASE
 ${HCLTECH_KNOWLEDGE}
-${HR_DOMAIN_KNOWLEDGE}
-${IT_DOMAIN_KNOWLEDGE}
 `;
 
-  if (domain === 'hr') {
-    basePrompt += `\n\n## Current Focus: HR Operations\nSpecialized in leave management, payroll, onboarding, performance reviews.`;
-  } else if (domain === 'it') {
-    basePrompt += `\n\n## Current Focus: IT Service Desk\nSpecialized in password resets, hardware issues, software installations.`;
-  } else if (domain === 'dev') {
-    basePrompt += `\n\n## Current Focus: Developer Support\nSpecialized in code reviews, API integrations, technical guidance.`;
+  // Role-specific instructions
+  if (userRole === 'hr') {
+    basePrompt += `
+## HR MANAGER PRIVILEGES
+- You can view pending leave requests and approvals
+- You can access employee records (within privacy bounds)
+- You should help HR managers with policy interpretations
+- Remind HR managers about pending approvals in their queue
+`;
+  } else if (userRole === 'developer') {
+    basePrompt += `
+## DEVELOPER MODE
+- You can analyze code errors and suggest fixes
+- You can propose code changes (these require developer approval before applying)
+- When asked to fix code, you MUST:
+  1. First analyze the error
+  2. Propose the fix using propose_code_change tool
+  3. Wait for developer approval before confirming the change
+  4. If approved, confirm the change was applied
+- You have read access to the codebase context
+- Always explain your reasoning for code changes
+`;
+  } else if (userRole === 'it') {
+    basePrompt += `
+## IT SUPPORT MODE
+- Specialized in IT infrastructure, security, and support
+- Can create and escalate IT tickets
+- Has access to common issue resolutions
+- SLA: Critical=15min, High=2hr, Medium=8hr
+`;
+  } else {
+    basePrompt += `
+## EMPLOYEE SELF-SERVICE
+- Help with leave applications, payslip queries, policy questions
+- Can schedule meetings with HR or managers
+- Can create IT tickets for technical issues
+- For sensitive topics, always escalate to HR
+`;
   }
 
-  // Add uploaded document context from semantic search
+  // Add semantic search results from uploaded documents
   if (searchResults && searchResults.length > 0) {
-    basePrompt += `\n\n## Relevant Document Excerpts (from uploaded files):\n`;
-    searchResults.forEach((result, i) => {
+    basePrompt += `\n\n## RELEVANT UPLOADED DOCUMENTS:\n`;
+    searchResults.forEach((result) => {
       basePrompt += `\n### [${result.documentName}, Page ${result.pageNumber}]\n${result.content}\n`;
     });
-  }
-
-  if (documentContext) {
-    basePrompt += `\n\n## Additional Document Context:\n${documentContext}`;
   }
 
   return basePrompt;
 }
 
-function summarizeConversation(messages: ChatMessage[]): string {
+function summarizeOlderMessages(messages: ChatMessage[]): string {
   if (messages.length <= 10) return '';
   const older = messages.slice(0, -10);
   const summary = older.filter(m => m.role !== 'system')
-    .map(m => `[${m.role}]: ${m.content.slice(0, 100)}${m.content.length > 100 ? '...' : ''}`)
+    .map(m => `[${m.role}]: ${m.content.slice(0, 80)}${m.content.length > 80 ? '...' : ''}`)
     .join('\n');
-  return `## Conversation Summary:\n${summary}\n\n---\n`;
+  return `## EARLIER CONVERSATION SUMMARY:\n${summary}\n\n---\n`;
 }
 
 serve(async (req) => {
@@ -270,7 +445,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, domain = 'general', documentContext, sessionId, stream = true } = await req.json();
+    const { messages, domain = 'general', sessionId, userContext = {}, stream = true } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -278,34 +453,63 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log(`Processing chat - Domain: ${domain}, Messages: ${messages.length}, Session: ${sessionId}`);
+    console.log(`Processing chat - Role: ${userContext.role}, Messages: ${messages.length}, Session: ${sessionId}`);
 
-    // Get latest user message for semantic search
-    const latestUserMessage = [...messages].reverse().find(m => m.role === 'user');
-    let searchResults: SemanticSearchResult[] = [];
+    // Check for sensitive topics in latest message
+    const latestUserMessage = [...messages].reverse().find((m: ChatMessage) => m.role === 'user');
+    const isSensitive = latestUserMessage && isSensitiveTopic(latestUserMessage.content);
     
+    if (isSensitive) {
+      console.log('Sensitive topic detected - will escalate to HR');
+    }
+
+    // Perform semantic search
+    let searchResults: SemanticSearchResult[] = [];
     if (latestUserMessage) {
       searchResults = await performSemanticSearch(latestUserMessage.content, sessionId);
       console.log(`Found ${searchResults.length} relevant document chunks`);
     }
 
-    // Build system prompt with search results
-    const systemPrompt = buildSystemPrompt(domain, documentContext, searchResults);
+    // Build system prompt
+    const systemPrompt = buildSystemPrompt(userContext.role || 'employee', userContext, searchResults);
     
-    // Build messages
+    // Build messages with context management
     const contextualMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt }];
     
-    // Add summary for long conversations
+    // Add conversation summary for long conversations
     if (messages.length > 10) {
-      const summary = summarizeConversation(messages);
-      if (summary) contextualMessages.push({ role: 'system', content: summary });
+      const summary = summarizeOlderMessages(messages);
+      if (summary) {
+        contextualMessages.push({ role: 'system', content: summary });
+      }
     }
 
-    // Add recent messages
-    const recent = messages.length > 10 ? messages.slice(-10) : messages;
-    contextualMessages.push(...recent);
+    // Add recent messages (last 10)
+    const recentMessages = messages.length > 10 ? messages.slice(-10) : messages;
+    contextualMessages.push(...recentMessages);
 
     console.log(`Sending ${contextualMessages.length} messages to AI`);
+
+    // Determine which tools to include based on role
+    const roleTools = TOOLS.filter(tool => {
+      const devOnlyTools = ['propose_code_change', 'analyze_error'];
+      if (devOnlyTools.includes(tool.function.name)) {
+        return userContext.role === 'developer';
+      }
+      return true;
+    });
+
+    const requestBody: any = {
+      model: "google/gemini-2.5-flash",
+      messages: contextualMessages,
+      stream,
+    };
+
+    // Add tools if not streaming (tool calling doesn't work well with streaming)
+    if (!stream) {
+      requestBody.tools = roleTools;
+      requestBody.tool_choice = "auto";
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -313,13 +517,7 @@ serve(async (req) => {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: contextualMessages,
-        stream,
-        temperature: 0.7,
-        max_tokens: 2048,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
