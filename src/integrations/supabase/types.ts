@@ -156,6 +156,318 @@ export type Database = {
           },
         ]
       }
+      ai_blocked_patterns: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          pattern_keywords: string[] | null
+          pattern_regex: string | null
+          pattern_type: string
+          severity: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          pattern_keywords?: string[] | null
+          pattern_regex?: string | null
+          pattern_type: string
+          severity?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          pattern_keywords?: string[] | null
+          pattern_regex?: string | null
+          pattern_type?: string
+          severity?: string | null
+        }
+        Relationships: []
+      }
+      ai_feedback: {
+        Row: {
+          corrected_response: string | null
+          created_at: string
+          feedback_data: Json | null
+          feedback_type: string
+          id: string
+          is_processed: boolean | null
+          message_id: string | null
+          original_response: string | null
+          pattern_extracted: string | null
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          corrected_response?: string | null
+          created_at?: string
+          feedback_data?: Json | null
+          feedback_type: string
+          id?: string
+          is_processed?: boolean | null
+          message_id?: string | null
+          original_response?: string | null
+          pattern_extracted?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          corrected_response?: string | null
+          created_at?: string
+          feedback_data?: Json | null
+          feedback_type?: string
+          id?: string
+          is_processed?: boolean | null
+          message_id?: string | null
+          original_response?: string | null
+          pattern_extracted?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_feedback_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_pattern_extracted_fkey"
+            columns: ["pattern_extracted"]
+            isOneToOne: false
+            referencedRelation: "ai_learned_patterns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_learned_patterns: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          failure_count: number | null
+          id: string
+          is_harmful: boolean | null
+          is_validated: boolean | null
+          last_used_at: string | null
+          pattern_data: Json
+          pattern_key: string
+          pattern_type: string
+          success_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          failure_count?: number | null
+          id?: string
+          is_harmful?: boolean | null
+          is_validated?: boolean | null
+          last_used_at?: string | null
+          pattern_data: Json
+          pattern_key: string
+          pattern_type: string
+          success_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          failure_count?: number | null
+          id?: string
+          is_harmful?: boolean | null
+          is_validated?: boolean | null
+          last_used_at?: string | null
+          pattern_data?: Json
+          pattern_key?: string
+          pattern_type?: string
+          success_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_safety_audit: {
+        Row: {
+          action_data: Json
+          action_type: string
+          approved_by: string | null
+          block_reason: string | null
+          created_at: string
+          id: string
+          risk_flags: string[] | null
+          safety_score: number | null
+          session_id: string | null
+          user_id: string | null
+          was_approved: boolean | null
+          was_blocked: boolean | null
+        }
+        Insert: {
+          action_data: Json
+          action_type: string
+          approved_by?: string | null
+          block_reason?: string | null
+          created_at?: string
+          id?: string
+          risk_flags?: string[] | null
+          safety_score?: number | null
+          session_id?: string | null
+          user_id?: string | null
+          was_approved?: boolean | null
+          was_blocked?: boolean | null
+        }
+        Update: {
+          action_data?: Json
+          action_type?: string
+          approved_by?: string | null
+          block_reason?: string | null
+          created_at?: string
+          id?: string
+          risk_flags?: string[] | null
+          safety_score?: number | null
+          session_id?: string | null
+          user_id?: string | null
+          was_approved?: boolean | null
+          was_blocked?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_safety_audit_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_task_queue: {
+        Row: {
+          approval_required: boolean | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          execution_result: Json | null
+          id: string
+          parent_task_id: string | null
+          proposed_changes: Json | null
+          risk_level: string | null
+          session_id: string | null
+          started_at: string | null
+          status: string | null
+          task_context: Json | null
+          task_description: string
+          task_order: number
+          task_type: string
+          user_id: string | null
+        }
+        Insert: {
+          approval_required?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          execution_result?: Json | null
+          id?: string
+          parent_task_id?: string | null
+          proposed_changes?: Json | null
+          risk_level?: string | null
+          session_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          task_context?: Json | null
+          task_description: string
+          task_order?: number
+          task_type: string
+          user_id?: string | null
+        }
+        Update: {
+          approval_required?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          execution_result?: Json | null
+          id?: string
+          parent_task_id?: string | null
+          proposed_changes?: Json | null
+          risk_level?: string | null
+          session_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          task_context?: Json | null
+          task_description?: string
+          task_order?: number
+          task_type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_task_queue_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "ai_task_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_task_queue_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_tool_registry: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean | null
+          parameters_schema: Json
+          required_approval: boolean | null
+          risk_level: string | null
+          success_rate: number | null
+          tool_category: string
+          tool_description: string
+          tool_name: string
+          usage_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          parameters_schema: Json
+          required_approval?: boolean | null
+          risk_level?: string | null
+          success_rate?: number | null
+          tool_category: string
+          tool_description: string
+          tool_name: string
+          usage_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          parameters_schema?: Json
+          required_approval?: boolean | null
+          risk_level?: string | null
+          success_rate?: number | null
+          tool_category?: string
+          tool_description?: string
+          tool_name?: string
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       approval_requests: {
         Row: {
           approved_at: string | null

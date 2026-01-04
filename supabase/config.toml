@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.semantic-search]
 verify_jwt = false
+
+[functions.advanced-agent]
+verify_jwt = false

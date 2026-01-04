@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Brain, Trash2, LogOut, BarChart3 } from 'lucide-react';
+import { MessageSquare, Brain, Trash2, LogOut, BarChart3, Code } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -17,6 +17,7 @@ import { TrainingWorkflow } from '@/components/workflows/TrainingWorkflow';
 import { DeploymentWorkflow } from '@/components/workflows/DeploymentWorkflow';
 import { AccessRequestWorkflow } from '@/components/workflows/AccessRequestWorkflow';
 import { IncidentWorkflow } from '@/components/workflows/IncidentWorkflow';
+import { DeveloperMode } from '@/components/ai/DeveloperMode';
 import { useChatSession } from '@/hooks/useChatSession';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -25,8 +26,9 @@ import type { Citation } from '@/types/agent';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { profile, role, signOut } = useAuth();
+  const { user, profile, role, signOut } = useAuth();
   const [showGlassBox, setShowGlassBox] = useState(true);
+  const [showDevMode, setShowDevMode] = useState(false);
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -97,6 +99,18 @@ const Index = () => {
               <span className="hidden sm:inline text-xs">Dashboard</span>
             </Button>
 
+            {role === 'developer' && (
+              <Button
+                variant={showDevMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowDevMode(!showDevMode)}
+                className="gap-1 h-8"
+              >
+                <Code className="w-3 h-3" />
+                <span className="hidden sm:inline text-xs">Dev Mode</span>
+              </Button>
+            )}
+
             <Button
               variant={showGlassBox ? "default" : "outline"}
               size="sm"
@@ -131,6 +145,10 @@ const Index = () => {
           </div>
         </header>
 
+        {/* Developer Mode Full Screen */}
+        {showDevMode && role === 'developer' ? (
+          <DeveloperMode sessionId={currentSessionId || ''} userId={user?.id || ''} />
+        ) : (
         <div className="flex-1 flex overflow-hidden">
           {/* Left Context Panel */}
           <div className="w-80 border-r border-border bg-muted/30 overflow-auto p-3 space-y-3 hidden lg:block">
@@ -212,6 +230,7 @@ const Index = () => {
             </div>
           )}
         </div>
+        )}
       </div>
 
       <PDFCitationViewer 
