@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.advanced-agent]
 verify_jwt = false
+
+[functions.perplexity-search]
+verify_jwt = false
