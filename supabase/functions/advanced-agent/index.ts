@@ -174,7 +174,7 @@ const TOOL_DEFINITIONS = [
               type: "object",
               properties: {
                 order: { type: "number" },
-                type: { type: "string", enum: ["code_fix", "code_review", "deployment", "git_operation", "file_operation", "database", "hr_request", "navigation", "training", "analysis", "test"] },
+                type: { type: "string", enum: ["code_fix", "code_review", "deployment", "git_operation", "file_operation", "database", "hr_request", "navigation", "training", "analysis", "test", "web_search", "social_lookup", "calculation"] },
                 description: { type: "string" },
                 risk_level: { type: "string", enum: ["low", "medium", "high", "critical"] },
                 requires_approval: { type: "boolean" },
@@ -202,6 +202,113 @@ const TOOL_DEFINITIONS = [
           parameters: { type: "object" }
         },
         required: ["task_id", "task_type"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_current_datetime",
+      description: "Get current date, time, timezone, and formatted date strings",
+      parameters: {
+        type: "object",
+        properties: {
+          timezone: { type: "string", description: "Timezone like 'America/New_York' or 'Asia/Tokyo'. Defaults to UTC." },
+          format: { type: "string", enum: ["full", "date_only", "time_only", "relative"] }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "web_search",
+      description: "Search the web for information using Perplexity AI. Use for current events, facts, documentation, or any real-time information.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "The search query" },
+          search_type: { type: "string", enum: ["general", "technical", "news", "academic"], description: "Type of search to perform" }
+        },
+        required: ["query"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "social_profile_lookup",
+      description: "Search for public profile information from social platforms like LinkedIn, Instagram, Facebook, Twitter/X",
+      parameters: {
+        type: "object",
+        properties: {
+          person_name: { type: "string", description: "Full name of the person to search" },
+          platform: { type: "string", enum: ["linkedin", "instagram", "facebook", "twitter", "all"], description: "Platform to search" },
+          additional_context: { type: "string", description: "Additional context like company name, location, or role to narrow search" }
+        },
+        required: ["person_name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "calculate",
+      description: "Perform mathematical calculations. Supports basic arithmetic, percentages, dates, and business calculations.",
+      parameters: {
+        type: "object",
+        properties: {
+          expression: { type: "string", description: "Math expression to evaluate (e.g., '15% of 2500', '(100 + 50) * 2', 'days between 2024-01-01 and 2024-12-31')" },
+          calculation_type: { type: "string", enum: ["arithmetic", "percentage", "date_diff", "financial", "conversion"] }
+        },
+        required: ["expression"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_site_info",
+      description: "Get information about the website structure, available pages, features, and navigation",
+      parameters: {
+        type: "object",
+        properties: {
+          info_type: { type: "string", enum: ["pages", "features", "automations", "components", "database", "roles", "all"] },
+          specific_page: { type: "string", description: "Optional: specific page path to get detailed info about" }
+        },
+        required: ["info_type"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "automate_hr_task",
+      description: "Automate HR tasks like leave requests, reimbursements, payslips, training enrollments",
+      parameters: {
+        type: "object",
+        properties: {
+          task_type: { type: "string", enum: ["leave_request", "reimbursement", "payslip", "training_enrollment", "onboarding", "performance_review"] },
+          task_data: { type: "object" },
+          target_user_id: { type: "string" }
+        },
+        required: ["task_type", "task_data"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "automate_dev_task",
+      description: "Automate developer tasks like bug fixes, code reviews, deployments, testing",
+      parameters: {
+        type: "object",
+        properties: {
+          task_type: { type: "string", enum: ["bug_fix", "code_review", "deployment", "test_run", "documentation", "refactor"] },
+          task_data: { type: "object" },
+          file_paths: { type: "array", items: { type: "string" } }
+        },
+        required: ["task_type", "task_data"]
       }
     }
   },
@@ -357,98 +464,99 @@ const TOOL_DEFINITIONS = [
 ];
 
 // ============================================================================
+// SITE DOCUMENTATION - Complete website knowledge
+// ============================================================================
+const SITE_DOCUMENTATION = {
+  pages: {
+    "/": { name: "Main Dashboard", roles: ["employee", "hr", "it", "developer"], features: ["Quick Actions", "Recent Activity", "Role Widgets"] },
+    "/assistant": { name: "AI Assistant", roles: ["employee", "hr", "it", "developer"], features: ["Chat", "Multi-task", "Voice"] },
+    "/dashboard": { name: "Analytics Dashboard", roles: ["hr", "it", "developer"], features: ["Charts", "KPIs", "Reports"] },
+    "/dev-console": { name: "Developer Console", roles: ["developer"], features: ["Code Review", "AI Training", "GitHub"] },
+    "/calendar": { name: "Calendar", roles: ["employee", "hr", "it", "developer"], features: ["Meetings", "Events"] },
+    "/settings": { name: "Settings", roles: ["employee", "hr", "it", "developer"], features: ["Profile", "Preferences"] }
+  },
+  automations: {
+    hr: ["leave_request", "reimbursement", "payslip", "training", "onboarding", "performance_review"],
+    developer: ["bug_fix", "code_review", "deployment", "testing", "documentation"],
+    it: ["access_request", "incident_report", "system_monitoring"]
+  },
+  components: {
+    chat: ["ChatInput", "ChatMessage", "ActionCard", "JSONSchemaCard", "RiskBadge"],
+    workflows: ["LeaveWorkflow", "ReimbursementWorkflow", "PayslipWorkflow", "TrainingWorkflow"],
+    ai: ["TaskDecompositionPanel", "SafetyGuardrailsPanel", "SelfLearningPanel", "CapabilityRequestPanel"]
+  }
+};
+
+// ============================================================================
 // ADVANCED SYSTEM PROMPT
 // ============================================================================
-const SYSTEM_PROMPT = `You are an advanced AI developer assistant with MULTI-TASKING capabilities and STRICT SAFETY protocols.
+const SYSTEM_PROMPT = `You are an advanced AI assistant with MULTI-TASKING, WEB SEARCH, CALCULATION, and AUTOMATION capabilities.
 
-## CRITICAL: MULTI-TASK HANDLING
-When a user gives you MULTIPLE tasks in one prompt:
+## YOUR CAPABILITIES
+1. **Date/Time Awareness**: Always know current date, time, day of week
+2. **Web Search**: Search the internet via Perplexity for any information
+3. **Social Media Lookup**: Find public profiles on LinkedIn, Instagram, Facebook, Twitter
+4. **Calculator**: Perform any mathematical calculation
+5. **HR Automation**: Leave requests, reimbursements, payslips, training
+6. **Developer Automation**: Code fixes, reviews, deployments, testing
+7. **Multi-tasking**: Handle 5+ tasks from a single prompt
+8. **Code Operations**: Read, write, analyze, and modify code
+9. **Git Operations**: Pull, push, commit, branch, diff
 
-### STEP 1: PARSE ALL TASKS
-- Identify each distinct task from the prompt
-- Assign order numbers (1, 2, 3, ...)
-- Call \`analyze_multi_task\` with all tasks
+## CURRENT DATE/TIME
+Always use \`get_current_datetime\` tool when user asks about time, date, or scheduling.
 
-### STEP 2: SAFETY CHECK EACH TASK
-For EACH task, check if it's safe to perform:
-- No destructive commands (rm -rf, drop database, etc.)
-- No credential exposure
-- No privilege escalation
-- If ANY task is UNSAFE, report it specifically and SKIP that task
+## WEB SEARCH
+Use \`web_search\` tool for:
+- Current events and news
+- Technical documentation
+- Company/product information
+- Any factual queries you're unsure about
 
-### STEP 3: CHECK REQUIRED INFORMATION
-For each task, verify you have ALL needed info:
-- File paths for code operations
-- Service names for deployments
-- Branch names for git operations
-- If info is MISSING, ask for ONLY the missing info before proceeding
+## SOCIAL PROFILE LOOKUP
+Use \`social_profile_lookup\` to find public info about people:
+- LinkedIn: Professional history, skills, connections
+- Instagram: Public posts, followers
+- Facebook: Public profile info
+- Twitter: Recent tweets, followers
 
-### STEP 4: CHECK DEPENDENCIES
-Build a dependency graph:
-- Task 2 might depend on Task 1 (e.g., "fix the bug and then deploy")
-- If Task 1 fails, SKIP Task 2 and any other dependents
-- Continue with independent tasks
+## CALCULATOR
+Use \`calculate\` for:
+- Basic math: 15 + 27 * 3
+- Percentages: 15% of 2500
+- Date calculations: days between dates
+- Financial: compound interest, loan payments
 
-### STEP 5: EXECUTE SEQUENTIALLY
-Execute tasks one by one:
-1. Show what you're about to do
-2. Request approval for risky operations
-3. Execute the task
-4. If FAILED:
-   - Check which tasks depend on this
-   - Skip dependent tasks
-   - Continue with next independent task
-5. If SUCCESS:
-   - Mark complete
-   - Move to next task
+## WEBSITE KNOWLEDGE
+You know everything about this website:
+${JSON.stringify(SITE_DOCUMENTATION, null, 2)}
 
-### STEP 6: REPORT SUMMARY
-At the end, show:
-- ✅ Completed tasks
-- ❌ Failed tasks (with reasons)
-- ⏭️ Skipped tasks (with why they were skipped)
-- ⚠️ Blocked tasks (unsafe or missing info)
+## MULTI-TASK HANDLING
+When user gives MULTIPLE tasks:
+1. **PARSE**: Identify each distinct task
+2. **SAFETY CHECK**: Validate each task for harmful patterns
+3. **INFO CHECK**: Ensure you have all required information
+4. **DEPENDENCIES**: Build dependency graph
+5. **EXECUTE**: Run tasks sequentially, skip dependents if parent fails
+6. **REPORT**: Show completed ✅, failed ❌, skipped ⏭️
 
 ## ROLE-BASED ACCESS
-- employee: Dashboard, Chat, Calendar, Tickets, Settings
-- hr: Above + HR Portal, Leave Management
-- developer: Above + Developer Console, Code Review, AI Training, Git Operations
+- employee: Dashboard, Chat, Calendar, Settings
+- hr: Above + HR Portal, Employee Management
+- developer: All features including Dev Console, Git
 
-NEVER allow users to access pages/features outside their role.
-
-## SAFETY PROTOCOLS (ABSOLUTE)
-1. NEVER execute without showing changes first
-2. NEVER run destructive commands
-3. NEVER access/transmit secrets
-4. ALWAYS request approval for: deployments, database changes, git pushes
-5. ALWAYS validate for injection attacks
-6. STOP IMMEDIATELY if malicious patterns detected
-
-## GITHUB INTEGRATION
-When user requests code operations:
-1. Use \`git_operation\` for git commands
-2. Use \`file_operation\` for file read/write
-3. Use \`run_diagnostics\` to verify changes
-4. ALWAYS show diff before committing
-5. REQUIRE approval before pushing
+## SAFETY PROTOCOLS
+1. NEVER execute destructive commands
+2. NEVER expose credentials
+3. ALWAYS show changes before applying
+4. ALWAYS request approval for risky operations
 
 ## RESPONSE FORMAT
-Always structure responses as:
-1. **Task Analysis**: List all detected tasks
-2. **Safety Status**: Safe ✅ or Blocked ❌
-3. **Missing Info**: What you need (if any)
-4. **Execution Plan**: Ordered list with dependencies
-5. **Progress**: Current task being executed
-6. **Results**: Final summary
-
-## JSON DISPLAY
-For structured data, output:
-\`\`\`json
-{
-  "action": "action_type",
-  "data": {...}
-}
-\`\`\``;
+Structure responses with:
+- Task list and status
+- Safety validation results
+- Execution progress
+- Final summary with results`;
 
 // ============================================================================
 // TOOL PROCESSING
@@ -636,6 +744,423 @@ async function processToolCall(
             status: success ? 'COMPLETED' : 'FAILED',
             result: executionResult,
             error: errorMessage || undefined
+          }
+        }
+      };
+    }
+
+    case 'get_current_datetime': {
+      const timezone = args.timezone || 'UTC';
+      const now = new Date();
+      
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+      });
+      
+      const parts = formatter.formatToParts(now);
+      const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+      
+      return {
+        result: {
+          iso: now.toISOString(),
+          formatted: formatter.format(now),
+          timezone,
+          day_of_week: getPart('weekday'),
+          date: `${getPart('month')} ${getPart('day')}, ${getPart('year')}`,
+          time: `${getPart('hour')}:${getPart('minute')}:${getPart('second')}`,
+          unix_timestamp: Math.floor(now.getTime() / 1000)
+        },
+        requiresApproval: false,
+        jsonDisplay: {
+          type: 'datetime',
+          title: 'Current Date & Time',
+          data: {
+            action: 'get_datetime',
+            date: `${getPart('month')} ${getPart('day')}, ${getPart('year')}`,
+            time: `${getPart('hour')}:${getPart('minute')}`,
+            day: getPart('weekday'),
+            timezone
+          }
+        }
+      };
+    }
+
+    case 'web_search': {
+      const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
+      
+      if (!PERPLEXITY_API_KEY) {
+        return {
+          result: { error: 'Web search not configured. Perplexity API key missing.' },
+          requiresApproval: false
+        };
+      }
+
+      try {
+        const searchResponse = await fetch('https://api.perplexity.ai/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'sonar',
+            messages: [
+              { role: 'system', content: 'Provide accurate, concise, up-to-date information. Include sources when relevant.' },
+              { role: 'user', content: args.query }
+            ],
+            max_tokens: 1024
+          }),
+        });
+
+        const searchData = await searchResponse.json();
+        
+        if (!searchResponse.ok) {
+          return {
+            result: { error: 'Search failed', details: searchData },
+            requiresApproval: false
+          };
+        }
+
+        return {
+          result: {
+            query: args.query,
+            answer: searchData.choices?.[0]?.message?.content || 'No results found',
+            citations: searchData.citations || []
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'web_search',
+            title: 'Web Search Results',
+            data: {
+              action: 'web_search',
+              query: args.query,
+              result: searchData.choices?.[0]?.message?.content?.substring(0, 500) + '...',
+              sources: searchData.citations?.length || 0
+            }
+          }
+        };
+      } catch (error) {
+        return {
+          result: { error: 'Search failed', message: error instanceof Error ? error.message : 'Unknown error' },
+          requiresApproval: false
+        };
+      }
+    }
+
+    case 'social_profile_lookup': {
+      const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
+      
+      if (!PERPLEXITY_API_KEY) {
+        return {
+          result: { error: 'Social lookup not configured. Perplexity API key missing.' },
+          requiresApproval: false
+        };
+      }
+
+      const platform = args.platform || 'all';
+      const context = args.additional_context || '';
+      
+      let searchQuery = `Find public profile information about ${args.person_name}`;
+      if (platform !== 'all') {
+        searchQuery += ` on ${platform}`;
+      }
+      if (context) {
+        searchQuery += `. Additional context: ${context}`;
+      }
+      searchQuery += `. Include: name, current role, company, location, professional background, public social links. Only provide publicly available information.`;
+
+      try {
+        const searchResponse = await fetch('https://api.perplexity.ai/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'sonar',
+            messages: [
+              { 
+                role: 'system', 
+                content: 'You are a professional researcher. Find public information about people. Only provide publicly available information. Be factual and include sources.' 
+              },
+              { role: 'user', content: searchQuery }
+            ],
+            max_tokens: 1024
+          }),
+        });
+
+        const searchData = await searchResponse.json();
+        
+        return {
+          result: {
+            person: args.person_name,
+            platform,
+            profile_info: searchData.choices?.[0]?.message?.content || 'No public information found',
+            citations: searchData.citations || []
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'social_lookup',
+            title: `Profile: ${args.person_name}`,
+            data: {
+              action: 'social_profile_lookup',
+              person: args.person_name,
+              platform,
+              info: searchData.choices?.[0]?.message?.content?.substring(0, 500) + '...',
+              sources: searchData.citations?.length || 0
+            }
+          }
+        };
+      } catch (error) {
+        return {
+          result: { error: 'Profile lookup failed', message: error instanceof Error ? error.message : 'Unknown error' },
+          requiresApproval: false
+        };
+      }
+    }
+
+    case 'calculate': {
+      const expression = args.expression;
+      let result: number | string;
+      let calculation_type = args.calculation_type || 'arithmetic';
+      
+      try {
+        // Handle percentage calculations
+        if (expression.toLowerCase().includes('% of')) {
+          const match = expression.match(/(\d+(?:\.\d+)?)\s*%\s*of\s*(\d+(?:\.\d+)?)/i);
+          if (match) {
+            result = (parseFloat(match[1]) / 100) * parseFloat(match[2]);
+            calculation_type = 'percentage';
+          } else {
+            throw new Error('Invalid percentage format');
+          }
+        }
+        // Handle date differences
+        else if (expression.toLowerCase().includes('days between')) {
+          const match = expression.match(/days between\s*(\d{4}-\d{2}-\d{2})\s*and\s*(\d{4}-\d{2}-\d{2})/i);
+          if (match) {
+            const date1 = new Date(match[1]);
+            const date2 = new Date(match[2]);
+            const diffTime = Math.abs(date2.getTime() - date1.getTime());
+            result = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            calculation_type = 'date_diff';
+          } else {
+            throw new Error('Invalid date format. Use: days between YYYY-MM-DD and YYYY-MM-DD');
+          }
+        }
+        // Basic arithmetic - safe evaluation
+        else {
+          // Only allow numbers, operators, parentheses, and spaces
+          const sanitized = expression.replace(/[^0-9+\-*/.() ]/g, '');
+          if (sanitized !== expression.replace(/\s/g, '').replace(/[^0-9+\-*/.()]/g, '')) {
+            throw new Error('Invalid characters in expression');
+          }
+          // Use Function constructor for safe evaluation (no access to global scope)
+          result = new Function('return ' + sanitized)();
+        }
+
+        return {
+          result: {
+            expression,
+            calculation_type,
+            result,
+            formatted: typeof result === 'number' ? result.toLocaleString() : result
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'calculation',
+            title: 'Calculator',
+            data: {
+              action: 'calculate',
+              expression,
+              type: calculation_type,
+              result: typeof result === 'number' ? result.toLocaleString() : result
+            }
+          }
+        };
+      } catch (error) {
+        return {
+          result: { error: 'Calculation failed', message: error instanceof Error ? error.message : 'Invalid expression' },
+          requiresApproval: false
+        };
+      }
+    }
+
+    case 'get_site_info': {
+      const info_type = args.info_type;
+      let responseData: any = {};
+
+      switch (info_type) {
+        case 'pages':
+          responseData = SITE_DOCUMENTATION.pages;
+          break;
+        case 'automations':
+          responseData = SITE_DOCUMENTATION.automations;
+          break;
+        case 'components':
+          responseData = SITE_DOCUMENTATION.components;
+          break;
+        case 'all':
+          responseData = SITE_DOCUMENTATION;
+          break;
+        default:
+          responseData = SITE_DOCUMENTATION;
+      }
+
+      if (args.specific_page && SITE_DOCUMENTATION.pages[args.specific_page as keyof typeof SITE_DOCUMENTATION.pages]) {
+        responseData = SITE_DOCUMENTATION.pages[args.specific_page as keyof typeof SITE_DOCUMENTATION.pages];
+      }
+
+      return {
+        result: responseData,
+        requiresApproval: false,
+        jsonDisplay: {
+          type: 'site_info',
+          title: 'Website Information',
+          data: {
+            action: 'get_site_info',
+            info_type,
+            data: responseData
+          }
+        }
+      };
+    }
+
+    case 'automate_hr_task': {
+      const { task_type, task_data, target_user_id } = args;
+      let result: any = {};
+
+      switch (task_type) {
+        case 'leave_request':
+          const { data: leaveRequest } = await supabase
+            .from('leave_requests')
+            .insert({
+              user_id: target_user_id || userId,
+              leave_type: task_data.leave_type || 'annual',
+              start_date: task_data.start_date,
+              end_date: task_data.end_date,
+              reason: task_data.reason,
+              status: 'pending'
+            })
+            .select()
+            .single();
+          result = { type: 'leave_request', id: leaveRequest?.id, status: 'submitted' };
+          break;
+        
+        case 'reimbursement':
+          const { data: reimbursement } = await supabase
+            .from('reimbursement_requests')
+            .insert({
+              user_id: target_user_id || userId,
+              amount: task_data.amount,
+              category: task_data.category,
+              description: task_data.description,
+              status: 'pending'
+            })
+            .select()
+            .single();
+          result = { type: 'reimbursement', id: reimbursement?.id, status: 'submitted' };
+          break;
+
+        case 'training_enrollment':
+          const { data: training } = await supabase
+            .from('training_requests')
+            .insert({
+              user_id: target_user_id || userId,
+              training_name: task_data.training_name,
+              training_type: task_data.training_type || 'online',
+              status: 'pending'
+            })
+            .select()
+            .single();
+          result = { type: 'training', id: training?.id, status: 'enrolled' };
+          break;
+
+        default:
+          result = { error: 'Unknown HR task type' };
+      }
+
+      return {
+        result,
+        requiresApproval: task_type !== 'payslip',
+        jsonDisplay: {
+          type: 'hr_automation',
+          title: `HR Task: ${task_type}`,
+          data: {
+            action: 'automate_hr_task',
+            task_type,
+            ...result
+          }
+        }
+      };
+    }
+
+    case 'automate_dev_task': {
+      const { task_type, task_data, file_paths } = args;
+      let result: any = {};
+
+      switch (task_type) {
+        case 'bug_fix':
+          const ticketId = `DEV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+          await supabase
+            .from('dev_tickets')
+            .insert({
+              ticket_id: ticketId,
+              reporter_id: userId,
+              service_name: task_data.service || 'unknown',
+              severity: task_data.severity || 'medium',
+              description: task_data.description,
+              status: 'in_progress'
+            });
+          result = { type: 'bug_fix', ticket_id: ticketId, status: 'created', files: file_paths };
+          break;
+
+        case 'code_review':
+          result = { 
+            type: 'code_review', 
+            files: file_paths, 
+            status: 'pending_review',
+            message: 'Code review initiated. Please review the changes.'
+          };
+          break;
+
+        case 'deployment':
+          const { data: deployment } = await supabase
+            .from('deployment_requests')
+            .insert({
+              requester_id: userId,
+              service_name: task_data.service,
+              environment: task_data.environment || 'staging',
+              version: task_data.version,
+              status: 'pending'
+            })
+            .select()
+            .single();
+          result = { type: 'deployment', id: deployment?.id, status: 'pending_approval' };
+          break;
+
+        default:
+          result = { type: task_type, status: 'initiated' };
+      }
+
+      return {
+        result,
+        requiresApproval: ['deployment', 'bug_fix'].includes(task_type),
+        jsonDisplay: {
+          type: 'dev_automation',
+          title: `Dev Task: ${task_type}`,
+          data: {
+            action: 'automate_dev_task',
+            task_type,
+            ...result
           }
         }
       };
