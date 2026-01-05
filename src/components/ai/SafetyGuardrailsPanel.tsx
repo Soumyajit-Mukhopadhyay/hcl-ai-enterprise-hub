@@ -25,9 +25,9 @@ interface SafetyCheck {
 }
 
 interface SafetyGuardrailsPanelProps {
-  checks: SafetyCheck[];
-  overallScore: number;
-  isAnalyzing: boolean;
+  checks?: SafetyCheck[];
+  overallScore?: number;
+  isAnalyzing?: boolean;
 }
 
 const checkTypeLabels = {
@@ -59,9 +59,9 @@ const statusConfig = {
 };
 
 export function SafetyGuardrailsPanel({ 
-  checks, 
-  overallScore, 
-  isAnalyzing 
+  checks = [], 
+  overallScore = 1.0, 
+  isAnalyzing = false 
 }: SafetyGuardrailsPanelProps) {
   const getScoreColor = (score: number) => {
     if (score >= 0.8) return 'text-green-600';
