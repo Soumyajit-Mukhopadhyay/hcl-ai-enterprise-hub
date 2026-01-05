@@ -189,6 +189,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_capability_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          capability_name: string
+          capability_type: string
+          created_at: string
+          description: string
+          id: string
+          proposed_implementation: Json | null
+          proposed_tool_schema: Json | null
+          requested_by_user_id: string | null
+          safety_analysis: Json | null
+          status: string
+          trigger_context: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          capability_name: string
+          capability_type: string
+          created_at?: string
+          description: string
+          id?: string
+          proposed_implementation?: Json | null
+          proposed_tool_schema?: Json | null
+          requested_by_user_id?: string | null
+          safety_analysis?: Json | null
+          status?: string
+          trigger_context?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          capability_name?: string
+          capability_type?: string
+          created_at?: string
+          description?: string
+          id?: string
+          proposed_implementation?: Json | null
+          proposed_tool_schema?: Json | null
+          requested_by_user_id?: string | null
+          safety_analysis?: Json | null
+          status?: string
+          trigger_context?: string | null
+        }
+        Relationships: []
+      }
       ai_feedback: {
         Row: {
           corrected_response: string | null
@@ -295,6 +343,54 @@ export type Database = {
           pattern_type?: string
           success_count?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_learning_sessions: {
+        Row: {
+          applied_at: string | null
+          approved_by: string | null
+          conversation_context: Json | null
+          created_at: string
+          extracted_patterns: Json | null
+          generated_prompt: string | null
+          id: string
+          is_approved: boolean | null
+          safety_analysis: Json | null
+          safety_score: number | null
+          session_type: string
+          trigger: string
+          user_id: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          approved_by?: string | null
+          conversation_context?: Json | null
+          created_at?: string
+          extracted_patterns?: Json | null
+          generated_prompt?: string | null
+          id?: string
+          is_approved?: boolean | null
+          safety_analysis?: Json | null
+          safety_score?: number | null
+          session_type: string
+          trigger: string
+          user_id?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          approved_by?: string | null
+          conversation_context?: Json | null
+          created_at?: string
+          extracted_patterns?: Json | null
+          generated_prompt?: string | null
+          id?: string
+          is_approved?: boolean | null
+          safety_analysis?: Json | null
+          safety_score?: number | null
+          session_type?: string
+          trigger?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -593,6 +689,65 @@ export type Database = {
         }
         Relationships: []
       }
+      code_change_proposals: {
+        Row: {
+          applied_at: string | null
+          approved_at: string | null
+          approved_by: string | null
+          change_type: string
+          created_at: string
+          explanation: string | null
+          file_path: string
+          id: string
+          original_code: string | null
+          proposed_by: string
+          proposed_code: string
+          risk_level: string | null
+          status: string
+          ticket_id: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          change_type?: string
+          created_at?: string
+          explanation?: string | null
+          file_path: string
+          id?: string
+          original_code?: string | null
+          proposed_by?: string
+          proposed_code: string
+          risk_level?: string | null
+          status?: string
+          ticket_id?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          change_type?: string
+          created_at?: string
+          explanation?: string | null
+          file_path?: string
+          id?: string
+          original_code?: string | null
+          proposed_by?: string
+          proposed_code?: string
+          risk_level?: string | null
+          status?: string
+          ticket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_change_proposals_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "dev_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       code_change_requests: {
         Row: {
           approved_at: string | null
@@ -668,6 +823,66 @@ export type Database = {
           service_name?: string
           status?: string | null
           version?: string | null
+        }
+        Relationships: []
+      }
+      dev_tickets: {
+        Row: {
+          assigned_developer_id: string | null
+          code_changes: Json | null
+          created_at: string
+          deployment_risk: string | null
+          description: string
+          error_details: Json | null
+          id: string
+          proposed_fix: Json | null
+          reporter_id: string | null
+          resolved_at: string | null
+          root_cause: string | null
+          service_name: string
+          severity: string
+          status: string
+          test_impact: string | null
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_developer_id?: string | null
+          code_changes?: Json | null
+          created_at?: string
+          deployment_risk?: string | null
+          description: string
+          error_details?: Json | null
+          id?: string
+          proposed_fix?: Json | null
+          reporter_id?: string | null
+          resolved_at?: string | null
+          root_cause?: string | null
+          service_name: string
+          severity?: string
+          status?: string
+          test_impact?: string | null
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_developer_id?: string | null
+          code_changes?: Json | null
+          created_at?: string
+          deployment_risk?: string | null
+          description?: string
+          error_details?: Json | null
+          id?: string
+          proposed_fix?: Json | null
+          reporter_id?: string | null
+          resolved_at?: string | null
+          root_cause?: string | null
+          service_name?: string
+          severity?: string
+          status?: string
+          test_impact?: string | null
+          ticket_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -883,6 +1098,42 @@ export type Database = {
           scheduled_time?: string
           status?: string | null
           title?: string
+        }
+        Relationships: []
+      }
+      navigation_config: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number | null
+          icon_name: string | null
+          id: string
+          is_active: boolean | null
+          required_roles: string[]
+          route_name: string
+          route_path: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          required_roles: string[]
+          route_name: string
+          route_path: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          required_roles?: string[]
+          route_name?: string
+          route_path?: string
         }
         Relationships: []
       }
