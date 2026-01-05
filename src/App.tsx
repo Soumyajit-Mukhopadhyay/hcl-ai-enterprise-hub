@@ -4,8 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import MainDashboard from "./pages/MainDashboard";
+import Assistant from "./pages/Assistant";
 import Dashboard from "./pages/Dashboard";
 import DevConsole from "./pages/DevConsole";
 import NotFound from "./pages/NotFound";
@@ -41,7 +42,12 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={
               <ProtectedRoute>
-                <Index />
+                <MainDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/assistant" element={
+              <ProtectedRoute>
+                <Assistant />
               </ProtectedRoute>
             } />
             <Route path="/dashboard" element={

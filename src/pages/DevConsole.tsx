@@ -14,7 +14,8 @@ import {
   Wrench,
   Shield,
   Activity,
-  BarChart3
+  BarChart3,
+  FolderGit2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { BugReportPanel, TicketStatusCard } from '@/components/tickets/BugReportPanel';
@@ -22,6 +23,7 @@ import { CodeChangeReview } from '@/components/developer/CodeChangeReview';
 import { SelfLearningPanel } from '@/components/ai/SelfLearningPanel';
 import { CapabilityRequestPanel } from '@/components/ai/CapabilityRequestPanel';
 import { SafetyGuardrailsPanel } from '@/components/ai/SafetyGuardrailsPanel';
+import { GitHubIntegrationPanel } from '@/components/developer/GitHubIntegrationPanel';
 import { supabase } from '@/integrations/supabase/client';
 
 const DevConsolePage = () => {
@@ -119,8 +121,12 @@ const DevConsolePage = () => {
 
       {/* Main Content */}
       <div className="p-4">
-        <Tabs defaultValue="tickets" className="space-y-4">
-          <TabsList className="grid grid-cols-5 w-full max-w-2xl">
+        <Tabs defaultValue="github" className="space-y-4">
+          <TabsList className="grid grid-cols-6 w-full max-w-3xl">
+            <TabsTrigger value="github" className="gap-2">
+              <FolderGit2 className="h-4 w-4" />
+              GitHub
+            </TabsTrigger>
             <TabsTrigger value="tickets" className="gap-2">
               <Bug className="h-4 w-4" />
               Tickets
@@ -142,6 +148,11 @@ const DevConsolePage = () => {
               Safety
             </TabsTrigger>
           </TabsList>
+
+          {/* GitHub Integration */}
+          <TabsContent value="github">
+            <GitHubIntegrationPanel />
+          </TabsContent>
 
           {/* Bug Tickets */}
           <TabsContent value="tickets" className="space-y-4">
