@@ -15,7 +15,9 @@ import {
   Shield,
   Activity,
   BarChart3,
-  FolderGit2
+  FolderGit2,
+  Sparkles,
+  Mic
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { BugReportPanel, TicketStatusCard } from '@/components/tickets/BugReportPanel';
@@ -24,6 +26,8 @@ import { SelfLearningPanel } from '@/components/ai/SelfLearningPanel';
 import { CapabilityRequestPanel } from '@/components/ai/CapabilityRequestPanel';
 import { SafetyGuardrailsPanel } from '@/components/ai/SafetyGuardrailsPanel';
 import { GitHubIntegrationPanel } from '@/components/developer/GitHubIntegrationPanel';
+import { AIAnalyticsDashboard } from '@/components/dashboard/AIAnalyticsDashboard';
+import { InnovativeFeaturesPanel } from '@/components/ai/InnovativeFeaturesPanel';
 import { supabase } from '@/integrations/supabase/client';
 
 const DevConsolePage = () => {
@@ -82,7 +86,7 @@ const DevConsolePage = () => {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Chat
+            Back to Dashboard
           </Button>
           <div>
             <h1 className="text-lg font-semibold">Developer Console</h1>
@@ -121,8 +125,16 @@ const DevConsolePage = () => {
 
       {/* Main Content */}
       <div className="p-4">
-        <Tabs defaultValue="github" className="space-y-4">
-          <TabsList className="grid grid-cols-6 w-full max-w-3xl">
+        <Tabs defaultValue="analytics" className="space-y-4">
+          <TabsList className="grid grid-cols-8 w-full max-w-4xl">
+            <TabsTrigger value="analytics" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="innovative" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Features
+            </TabsTrigger>
             <TabsTrigger value="github" className="gap-2">
               <FolderGit2 className="h-4 w-4" />
               GitHub
@@ -133,21 +145,33 @@ const DevConsolePage = () => {
             </TabsTrigger>
             <TabsTrigger value="code-review" className="gap-2">
               <GitPullRequest className="h-4 w-4" />
-              Code Review
+              Code
             </TabsTrigger>
             <TabsTrigger value="ai-training" className="gap-2">
               <Brain className="h-4 w-4" />
-              AI Training
+              Training
             </TabsTrigger>
             <TabsTrigger value="capabilities" className="gap-2">
               <Wrench className="h-4 w-4" />
-              Capabilities
+              Tools
             </TabsTrigger>
             <TabsTrigger value="safety" className="gap-2">
               <Shield className="h-4 w-4" />
               Safety
             </TabsTrigger>
           </TabsList>
+
+          {/* Analytics Dashboard */}
+          <TabsContent value="analytics">
+            <AIAnalyticsDashboard />
+          </TabsContent>
+
+          {/* Innovative Features */}
+          <TabsContent value="innovative">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <InnovativeFeaturesPanel />
+            </div>
+          </TabsContent>
 
           {/* GitHub Integration */}
           <TabsContent value="github">
