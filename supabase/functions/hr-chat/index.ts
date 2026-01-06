@@ -343,9 +343,11 @@ async function performSemanticSearch(query: string, sessionId?: string): Promise
       .not('embedding', 'is', null)
       .limit(100);
 
+    // Include session-specific documents AND global documents (like Annual Reports)
     if (sessionId) {
-      chunksQuery = chunksQuery.eq('uploaded_documents.session_id', sessionId);
+      chunksQuery = chunksQuery.or(`session_id.eq.${sessionId},is_global.eq.true`, { referencedTable: 'uploaded_documents' });
     }
+    // If no sessionId, search all documents including global ones
 
     const { data: chunks, error } = await chunksQuery;
 

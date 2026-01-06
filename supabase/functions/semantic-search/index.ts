@@ -117,9 +117,12 @@ serve(async (req) => {
       `)
       .not('embedding', 'is', null);
 
+    // Include session-specific documents AND global documents (like Annual Reports)
     if (sessionId) {
-      chunksQuery = chunksQuery.eq('uploaded_documents.session_id', sessionId);
+      // Use OR filter: session docs OR global docs
+      chunksQuery = chunksQuery.or(`session_id.eq.${sessionId},is_global.eq.true`, { referencedTable: 'uploaded_documents' });
     }
+    // If no sessionId, search all documents (service role bypasses RLS)
 
     const { data: chunks, error: chunksError } = await chunksQuery;
 
