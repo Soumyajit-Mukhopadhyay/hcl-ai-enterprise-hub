@@ -1329,6 +1329,7 @@ export type Database = {
           file_size: number
           file_type: string
           id: string
+          is_global: boolean | null
           page_count: number | null
           session_id: string | null
           storage_path: string
@@ -1342,6 +1343,7 @@ export type Database = {
           file_size: number
           file_type: string
           id?: string
+          is_global?: boolean | null
           page_count?: number | null
           session_id?: string | null
           storage_path: string
@@ -1355,6 +1357,7 @@ export type Database = {
           file_size?: number
           file_type?: string
           id?: string
+          is_global?: boolean | null
           page_count?: number | null
           session_id?: string | null
           storage_path?: string
