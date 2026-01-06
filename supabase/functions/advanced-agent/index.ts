@@ -542,6 +542,21 @@ const TOOL_DEFINITIONS = [
   {
     type: "function",
     function: {
+      name: "search_documents",
+      description: "Search uploaded documents including global company documents like Annual Reports, policies, and manuals. Use this to answer questions about company information, policies, or any uploaded documents.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "The search query - what information to find in documents" },
+          document_type: { type: "string", enum: ["all", "annual_report", "policy", "manual", "other"], description: "Type of document to search" }
+        },
+        required: ["query"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "learn_pattern",
       description: "Learn a new pattern or behavior from user instruction",
       parameters: {
@@ -1449,6 +1464,126 @@ async function processToolCall(
             destination: args.page_name,
             route: pageConfig.route,
             status: 'ALLOWED'
+          }
+        }
+      };
+    }
+
+    case 'search_documents': {
+      // Search documents including global company documents (Annual Reports, policies, etc.)
+      const query = args.query;
+      
+      // Build the search query - include both session-specific and global documents
+      let chunksQuery = supabase
+        .from('document_chunks')
+        .select(`
+          id, content, page_number, section_title, document_id,
+          uploaded_documents!inner (id, file_name, session_id, is_global)
+        `)
+        .limit(50);
+
+      // Always include global documents plus any session-specific ones
+      // Since we don't have sessionId here, we search global documents
+      chunksQuery = chunksQuery.eq('uploaded_documents.is_global', true);
+
+      const { data: chunks, error } = await chunksQuery;
+
+      if (error) {
+        console.error('Document search error:', error);
+        return {
+          result: { error: 'Failed to search documents', details: error.message },
+          requiresApproval: false
+        };
+      }
+
+      if (!chunks || chunks.length === 0) {
+        return {
+          result: { 
+            found: false, 
+            message: 'No global documents found. Ask user to upload relevant documents or mark existing documents as global.' 
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'search',
+            title: 'Document Search',
+            data: {
+              action: 'search_documents',
+              query,
+              status: 'NO_RESULTS',
+              message: 'No global documents indexed yet'
+            }
+          }
+        };
+      }
+
+      // Simple keyword-based search
+      const queryWords = query.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+      
+      const scoredChunks = chunks.map((chunk: any) => {
+        const contentLower = chunk.content.toLowerCase();
+        let score = 0;
+        for (const word of queryWords) {
+          const matches = contentLower.match(new RegExp(word, 'gi'));
+          if (matches) {
+            score += matches.length;
+          }
+        }
+        return { ...chunk, score };
+      });
+
+      const relevantChunks = scoredChunks
+        .filter((c: any) => c.score > 0)
+        .sort((a: any, b: any) => b.score - a.score)
+        .slice(0, 5);
+
+      if (relevantChunks.length === 0) {
+        return {
+          result: { 
+            found: false, 
+            message: `No relevant content found for "${query}" in global documents.`,
+            suggestion: 'Try different keywords or upload a document with this information.'
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'search',
+            title: 'Document Search',
+            data: {
+              action: 'search_documents',
+              query,
+              status: 'NO_MATCHES',
+              totalDocs: chunks.length
+            }
+          }
+        };
+      }
+
+      const results = relevantChunks.map((chunk: any) => ({
+        documentName: chunk.uploaded_documents?.file_name || 'Unknown',
+        pageNumber: chunk.page_number,
+        sectionTitle: chunk.section_title,
+        content: chunk.content,
+        snippet: chunk.content.substring(0, 500) + (chunk.content.length > 500 ? '...' : ''),
+        relevanceScore: chunk.score
+      }));
+
+      return {
+        result: { 
+          found: true, 
+          query,
+          resultCount: results.length,
+          results,
+          message: `Found ${results.length} relevant sections from global documents.`
+        },
+        requiresApproval: false,
+        jsonDisplay: {
+          type: 'search',
+          title: 'Document Search Results',
+          data: {
+            action: 'search_documents',
+            query,
+            status: 'FOUND',
+            resultCount: results.length,
+            sources: results.map((r: any) => `${r.documentName} (Page ${r.pageNumber})`)
           }
         }
       };
