@@ -787,6 +787,80 @@ export type Database = {
         }
         Relationships: []
       }
+      database_migrations_log: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          error_message: string | null
+          executed_at: string | null
+          execution_result: Json | null
+          id: string
+          migration_description: string | null
+          migration_name: string
+          migration_sql: string
+          operation_type: string
+          proposed_by: string
+          risk_level: string | null
+          rollback_sql: string | null
+          safety_analysis: Json | null
+          session_id: string | null
+          status: string | null
+          tables_affected: string[] | null
+          user_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          execution_result?: Json | null
+          id?: string
+          migration_description?: string | null
+          migration_name: string
+          migration_sql: string
+          operation_type: string
+          proposed_by: string
+          risk_level?: string | null
+          rollback_sql?: string | null
+          safety_analysis?: Json | null
+          session_id?: string | null
+          status?: string | null
+          tables_affected?: string[] | null
+          user_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          execution_result?: Json | null
+          id?: string
+          migration_description?: string | null
+          migration_name?: string
+          migration_sql?: string
+          operation_type?: string
+          proposed_by?: string
+          risk_level?: string | null
+          rollback_sql?: string | null
+          safety_analysis?: Json | null
+          session_id?: string | null
+          status?: string | null
+          tables_affected?: string[] | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "database_migrations_log_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deployment_requests: {
         Row: {
           approved_at: string | null
@@ -926,6 +1000,160 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "uploaded_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      file_operations_log: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          change_description: string | null
+          created_at: string | null
+          error_message: string | null
+          executed_at: string | null
+          file_content: string | null
+          file_path: string
+          id: string
+          operation_type: string
+          original_content: string | null
+          requires_approval: boolean | null
+          risk_level: string | null
+          session_id: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          change_description?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          file_content?: string | null
+          file_path: string
+          id?: string
+          operation_type: string
+          original_content?: string | null
+          requires_approval?: boolean | null
+          risk_level?: string | null
+          session_id?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          change_description?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          file_content?: string | null
+          file_path?: string
+          id?: string
+          operation_type?: string
+          original_content?: string | null
+          requires_approval?: boolean | null
+          risk_level?: string | null
+          session_id?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_operations_log_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      github_operations: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          branch_name: string | null
+          commit_message: string | null
+          commit_sha: string | null
+          created_at: string | null
+          error_message: string | null
+          executed_at: string | null
+          files_changed: Json | null
+          id: string
+          operation_data: Json | null
+          operation_type: string
+          pr_body: string | null
+          pr_number: number | null
+          pr_title: string | null
+          pr_url: string | null
+          repo_name: string | null
+          repo_owner: string | null
+          requires_approval: boolean | null
+          risk_level: string | null
+          session_id: string | null
+          status: string | null
+          target_branch: string | null
+          user_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          branch_name?: string | null
+          commit_message?: string | null
+          commit_sha?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          files_changed?: Json | null
+          id?: string
+          operation_data?: Json | null
+          operation_type: string
+          pr_body?: string | null
+          pr_number?: number | null
+          pr_title?: string | null
+          pr_url?: string | null
+          repo_name?: string | null
+          repo_owner?: string | null
+          requires_approval?: boolean | null
+          risk_level?: string | null
+          session_id?: string | null
+          status?: string | null
+          target_branch?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          branch_name?: string | null
+          commit_message?: string | null
+          commit_sha?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          files_changed?: Json | null
+          id?: string
+          operation_data?: Json | null
+          operation_type?: string
+          pr_body?: string | null
+          pr_number?: number | null
+          pr_title?: string | null
+          pr_url?: string | null
+          repo_name?: string | null
+          repo_owner?: string | null
+          requires_approval?: boolean | null
+          risk_level?: string | null
+          session_id?: string | null
+          status?: string | null
+          target_branch?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "github_operations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
             referencedColumns: ["id"]
           },
         ]

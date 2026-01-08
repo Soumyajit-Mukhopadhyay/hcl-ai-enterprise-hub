@@ -38,6 +38,18 @@ const BLOCKED_PATTERNS = {
     /chmod\s+777/i,
     /chown\s+root/i,
   ],
+  github_dangerous: [
+    /force\s+push/i,
+    /--force/i,
+    /delete\s+branch.*main/i,
+    /delete\s+branch.*master/i,
+  ],
+  database_dangerous: [
+    /DROP\s+TABLE/i,
+    /TRUNCATE/i,
+    /DELETE\s+FROM\s+\w+\s*(?:;|$)/i,
+    /ALTER\s+TABLE.*DROP/i,
+  ],
 };
 
 // ============================================================================
@@ -667,6 +679,258 @@ const TOOL_DEFINITIONS = [
           fix_errors: { type: "boolean" }
         },
         required: ["diagnostic_type"]
+      }
+    }
+  },
+  // ============================================================================
+  // NEW DEVELOPER TOOLS - Full Capabilities
+  // ============================================================================
+  {
+    type: "function",
+    function: {
+      name: "query_database",
+      description: "Execute read-only SQL queries on the database. Can list files, check records, analyze data. Only SELECT operations allowed.",
+      parameters: {
+        type: "object",
+        properties: {
+          table_name: { type: "string", description: "Target table name (e.g., 'uploaded_documents', 'profiles', 'dev_tickets')" },
+          columns: { type: "array", items: { type: "string" }, description: "Columns to select (use ['*'] for all)" },
+          filters: { type: "object", description: "WHERE conditions as key-value pairs" },
+          order_by: { type: "string", description: "Column to order by" },
+          order_direction: { type: "string", enum: ["asc", "desc"], description: "Order direction" },
+          limit: { type: "number", description: "Max rows to return (default: 50, max: 100)" }
+        },
+        required: ["table_name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_all_files",
+      description: "List all files in the system - from uploaded_documents table and storage buckets. Returns file names, types, sizes, and metadata.",
+      parameters: {
+        type: "object",
+        properties: {
+          source: { type: "string", enum: ["database", "storage", "both"], description: "Where to list files from" },
+          filter: { 
+            type: "object", 
+            properties: {
+              file_type: { type: "string", description: "Filter by file type (e.g., 'pdf', 'docx')" },
+              is_global: { type: "boolean", description: "Filter by global status" }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "github_create_pr",
+      description: "Create a pull request on GitHub with code changes. Requires GITHUB_TOKEN secret.",
+      parameters: {
+        type: "object",
+        properties: {
+          repo_owner: { type: "string", description: "Repository owner/organization" },
+          repo_name: { type: "string", description: "Repository name" },
+          title: { type: "string", description: "PR title" },
+          body: { type: "string", description: "PR description" },
+          head_branch: { type: "string", description: "Source branch with changes" },
+          base_branch: { type: "string", description: "Target branch (usually main/master)" },
+          files: { 
+            type: "array", 
+            items: { 
+              type: "object",
+              properties: {
+                path: { type: "string" },
+                content: { type: "string" }
+              }
+            },
+            description: "Files to include in the PR" 
+          }
+        },
+        required: ["repo_owner", "repo_name", "title", "head_branch", "base_branch"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "github_push_commit",
+      description: "Create a commit and push to a GitHub branch. Requires GITHUB_TOKEN secret.",
+      parameters: {
+        type: "object",
+        properties: {
+          repo_owner: { type: "string", description: "Repository owner/organization" },
+          repo_name: { type: "string", description: "Repository name" },
+          branch: { type: "string", description: "Target branch" },
+          commit_message: { type: "string", description: "Commit message" },
+          files: { 
+            type: "array", 
+            items: { 
+              type: "object",
+              properties: {
+                path: { type: "string" },
+                content: { type: "string" }
+              }
+            },
+            description: "Files to commit" 
+          }
+        },
+        required: ["repo_owner", "repo_name", "branch", "commit_message", "files"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "github_list_files",
+      description: "List files in a GitHub repository. Returns file tree structure.",
+      parameters: {
+        type: "object",
+        properties: {
+          repo_owner: { type: "string", description: "Repository owner/organization" },
+          repo_name: { type: "string", description: "Repository name" },
+          path: { type: "string", description: "Path within repo (default: root)" },
+          branch: { type: "string", description: "Branch name (default: main)" }
+        },
+        required: ["repo_owner", "repo_name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "github_get_file",
+      description: "Get the contents of a file from a GitHub repository.",
+      parameters: {
+        type: "object",
+        properties: {
+          repo_owner: { type: "string", description: "Repository owner/organization" },
+          repo_name: { type: "string", description: "Repository name" },
+          path: { type: "string", description: "File path in the repository" },
+          branch: { type: "string", description: "Branch name (default: main)" }
+        },
+        required: ["repo_owner", "repo_name", "path"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "github_create_branch",
+      description: "Create a new branch in a GitHub repository.",
+      parameters: {
+        type: "object",
+        properties: {
+          repo_owner: { type: "string", description: "Repository owner/organization" },
+          repo_name: { type: "string", description: "Repository name" },
+          branch_name: { type: "string", description: "New branch name" },
+          from_branch: { type: "string", description: "Source branch (default: main)" }
+        },
+        required: ["repo_owner", "repo_name", "branch_name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "github_merge_pr",
+      description: "Merge an approved pull request. HIGH RISK - requires developer approval.",
+      parameters: {
+        type: "object",
+        properties: {
+          repo_owner: { type: "string", description: "Repository owner/organization" },
+          repo_name: { type: "string", description: "Repository name" },
+          pr_number: { type: "number", description: "Pull request number" },
+          merge_method: { type: "string", enum: ["merge", "squash", "rebase"], description: "Merge method" }
+        },
+        required: ["repo_owner", "repo_name", "pr_number"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "github_list_prs",
+      description: "List pull requests in a GitHub repository.",
+      parameters: {
+        type: "object",
+        properties: {
+          repo_owner: { type: "string", description: "Repository owner/organization" },
+          repo_name: { type: "string", description: "Repository name" },
+          state: { type: "string", enum: ["open", "closed", "all"], description: "PR state filter" }
+        },
+        required: ["repo_owner", "repo_name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "github_list_branches",
+      description: "List branches in a GitHub repository.",
+      parameters: {
+        type: "object",
+        properties: {
+          repo_owner: { type: "string", description: "Repository owner/organization" },
+          repo_name: { type: "string", description: "Repository name" }
+        },
+        required: ["repo_owner", "repo_name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "database_migration",
+      description: "Propose a database schema change (create table, add column, create index). CRITICAL - requires developer approval.",
+      parameters: {
+        type: "object",
+        properties: {
+          operation: { type: "string", enum: ["create_table", "add_column", "create_index", "add_rls", "other"], description: "Type of migration" },
+          migration_name: { type: "string", description: "Short name for the migration" },
+          description: { type: "string", description: "What this migration does" },
+          sql: { type: "string", description: "The SQL to execute" },
+          rollback_sql: { type: "string", description: "SQL to rollback this migration" },
+          tables_affected: { type: "array", items: { type: "string" }, description: "Tables that will be modified" }
+        },
+        required: ["operation", "migration_name", "sql", "tables_affected"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "apply_code_change",
+      description: "Apply a previously approved code change proposal. This creates a GitHub commit or stores the change.",
+      parameters: {
+        type: "object",
+        properties: {
+          proposal_id: { type: "string", description: "ID of the approved code change proposal" },
+          apply_method: { type: "string", enum: ["storage", "github_commit", "github_pr"], description: "How to apply the change" },
+          repo_owner: { type: "string", description: "GitHub repo owner (if using github methods)" },
+          repo_name: { type: "string", description: "GitHub repo name (if using github methods)" }
+        },
+        required: ["proposal_id", "apply_method"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "enhanced_file_operation",
+      description: "Enhanced file operations - create, read, update, delete files with tracking and approval workflow.",
+      parameters: {
+        type: "object",
+        properties: {
+          operation: { type: "string", enum: ["create", "read", "update", "delete", "list"], description: "Operation type" },
+          file_path: { type: "string", description: "File path" },
+          content: { type: "string", description: "File content (for create/update)" },
+          description: { type: "string", description: "Description of the change" }
+        },
+        required: ["operation", "file_path"]
       }
     }
   }
@@ -1921,6 +2185,920 @@ async function processToolCall(
             status: 'COMPLETED',
             errors: 0,
             warnings: 2
+          }
+        }
+      };
+    }
+
+    // ============================================================================
+    // NEW DEVELOPER TOOLS IMPLEMENTATIONS
+    // ============================================================================
+    
+    case 'query_database': {
+      const { table_name, columns = ['*'], filters = {}, order_by, order_direction = 'desc', limit = 50 } = args;
+      
+      // Whitelist of tables that can be queried
+      const allowedTables = [
+        'uploaded_documents', 'document_chunks', 'profiles', 'dev_tickets', 
+        'code_change_proposals', 'ai_analytics', 'ai_task_queue', 'chat_sessions',
+        'chat_messages', 'leave_requests', 'reimbursement_requests', 'training_requests',
+        'github_operations', 'database_migrations_log', 'file_operations_log',
+        'notifications', 'meetings', 'deployment_requests', 'incident_reports'
+      ];
+      
+      if (!allowedTables.includes(table_name)) {
+        return {
+          result: { error: `Table '${table_name}' is not accessible. Allowed tables: ${allowedTables.join(', ')}` },
+          requiresApproval: false
+        };
+      }
+
+      try {
+        let query = supabase.from(table_name).select(columns.join(','));
+        
+        // Apply filters
+        for (const [key, value] of Object.entries(filters)) {
+          if (value !== null && value !== undefined) {
+            query = query.eq(key, value);
+          }
+        }
+        
+        if (order_by) {
+          query = query.order(order_by, { ascending: order_direction === 'asc' });
+        }
+        
+        query = query.limit(Math.min(limit, 100));
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          return {
+            result: { error: 'Query failed', details: error.message },
+            requiresApproval: false
+          };
+        }
+
+        // Log the query for audit
+        await supabase.from('ai_safety_audit').insert({
+          session_id: sessionId,
+          user_id: userId,
+          action_type: 'database_query',
+          action_data: { table_name, columns, filters, limit },
+          safety_score: 1.0
+        });
+
+        return {
+          result: {
+            table: table_name,
+            row_count: data?.length || 0,
+            data: data
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'database_query',
+            title: `Query: ${table_name}`,
+            data: {
+              action: 'query_database',
+              table: table_name,
+              rows_returned: data?.length || 0,
+              columns: columns,
+              sample: data?.slice(0, 3)
+            }
+          }
+        };
+      } catch (error) {
+        return {
+          result: { error: 'Query execution failed', message: error instanceof Error ? error.message : 'Unknown error' },
+          requiresApproval: false
+        };
+      }
+    }
+
+    case 'list_all_files': {
+      const { source = 'both', filter = {} } = args;
+      const results: any = { database_files: [], storage_files: [] };
+
+      if (source === 'database' || source === 'both') {
+        let query = supabase
+          .from('uploaded_documents')
+          .select('id, file_name, file_type, file_size, is_global, created_at, storage_path, session_id')
+          .order('created_at', { ascending: false });
+        
+        if (filter.file_type) {
+          query = query.ilike('file_type', `%${filter.file_type}%`);
+        }
+        if (filter.is_global !== undefined) {
+          query = query.eq('is_global', filter.is_global);
+        }
+        
+        const { data, error } = await query.limit(100);
+        
+        if (!error && data) {
+          results.database_files = data.map((f: any) => ({
+            id: f.id,
+            name: f.file_name,
+            type: f.file_type,
+            size: f.file_size,
+            is_global: f.is_global,
+            created_at: f.created_at,
+            path: f.storage_path
+          }));
+        }
+      }
+
+      if (source === 'storage' || source === 'both') {
+        // List files from storage bucket
+        const { data: storageData, error: storageError } = await supabase
+          .storage
+          .from('documents')
+          .list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+        
+        if (!storageError && storageData) {
+          results.storage_files = storageData.map((f: any) => ({
+            name: f.name,
+            size: f.metadata?.size,
+            created_at: f.created_at,
+            type: f.metadata?.mimetype
+          }));
+        }
+      }
+
+      const totalFiles = results.database_files.length + results.storage_files.length;
+
+      return {
+        result: {
+          total_files: totalFiles,
+          database_files: results.database_files,
+          storage_files: results.storage_files
+        },
+        requiresApproval: false,
+        jsonDisplay: {
+          type: 'file_list',
+          title: `All Files (${totalFiles} total)`,
+          data: {
+            action: 'list_all_files',
+            source,
+            total: totalFiles,
+            database_count: results.database_files.length,
+            storage_count: results.storage_files.length,
+            file_names: results.database_files.map((f: any) => f.name)
+          }
+        }
+      };
+    }
+
+    case 'github_create_pr': {
+      const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
+      if (!GITHUB_TOKEN) {
+        return {
+          result: { error: 'GitHub integration not configured. GITHUB_TOKEN secret is required.' },
+          requiresApproval: false
+        };
+      }
+
+      const { repo_owner, repo_name, title, body, head_branch, base_branch, files } = args;
+
+      // Log the operation for approval
+      const { data: operation } = await supabase
+        .from('github_operations')
+        .insert({
+          user_id: userId,
+          session_id: sessionId,
+          operation_type: 'create_pr',
+          repo_owner,
+          repo_name,
+          branch_name: head_branch,
+          target_branch: base_branch,
+          pr_title: title,
+          pr_body: body,
+          files_changed: files || [],
+          status: 'pending',
+          requires_approval: true,
+          risk_level: 'high'
+        })
+        .select()
+        .single();
+
+      return {
+        result: {
+          operation_id: operation?.id,
+          status: 'pending_approval',
+          message: 'Pull request creation requires developer approval.',
+          pr_details: { title, head_branch, base_branch, repo: `${repo_owner}/${repo_name}` }
+        },
+        requiresApproval: true,
+        jsonDisplay: {
+          type: 'github_operation',
+          title: `🔀 Create PR: ${title}`,
+          data: {
+            action: 'github_create_pr',
+            repo: `${repo_owner}/${repo_name}`,
+            title,
+            from: head_branch,
+            to: base_branch,
+            files: files?.length || 0,
+            status: 'PENDING_APPROVAL'
+          }
+        }
+      };
+    }
+
+    case 'github_push_commit': {
+      const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
+      if (!GITHUB_TOKEN) {
+        return {
+          result: { error: 'GitHub integration not configured. GITHUB_TOKEN secret is required.' },
+          requiresApproval: false
+        };
+      }
+
+      const { repo_owner, repo_name, branch, commit_message, files } = args;
+
+      // Log the operation for approval
+      const { data: operation } = await supabase
+        .from('github_operations')
+        .insert({
+          user_id: userId,
+          session_id: sessionId,
+          operation_type: 'push_commit',
+          repo_owner,
+          repo_name,
+          branch_name: branch,
+          commit_message,
+          files_changed: files || [],
+          status: 'pending',
+          requires_approval: true,
+          risk_level: 'high'
+        })
+        .select()
+        .single();
+
+      return {
+        result: {
+          operation_id: operation?.id,
+          status: 'pending_approval',
+          message: 'Commit push requires developer approval.'
+        },
+        requiresApproval: true,
+        jsonDisplay: {
+          type: 'github_operation',
+          title: `📝 Commit: ${commit_message.substring(0, 50)}...`,
+          data: {
+            action: 'github_push_commit',
+            repo: `${repo_owner}/${repo_name}`,
+            branch,
+            message: commit_message,
+            files: files?.length || 0,
+            status: 'PENDING_APPROVAL'
+          }
+        }
+      };
+    }
+
+    case 'github_list_files': {
+      const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
+      if (!GITHUB_TOKEN) {
+        return {
+          result: { error: 'GitHub integration not configured. GITHUB_TOKEN secret is required.' },
+          requiresApproval: false
+        };
+      }
+
+      const { repo_owner, repo_name, path = '', branch = 'main' } = args;
+
+      try {
+        const response = await fetch(
+          `https://api.github.com/repos/${repo_owner}/${repo_name}/contents/${path}?ref=${branch}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'AI-Developer-Agent'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          return {
+            result: { error: 'Failed to list files', details: error.message },
+            requiresApproval: false
+          };
+        }
+
+        const files = await response.json();
+        const fileList = Array.isArray(files) ? files.map((f: any) => ({
+          name: f.name,
+          path: f.path,
+          type: f.type,
+          size: f.size
+        })) : [{ name: files.name, path: files.path, type: files.type, size: files.size }];
+
+        return {
+          result: {
+            repo: `${repo_owner}/${repo_name}`,
+            branch,
+            path: path || '/',
+            file_count: fileList.length,
+            files: fileList
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'github_files',
+            title: `📁 ${repo_name}/${path || '/'}`,
+            data: {
+              action: 'github_list_files',
+              repo: `${repo_owner}/${repo_name}`,
+              branch,
+              files: fileList.slice(0, 20).map((f: any) => f.name)
+            }
+          }
+        };
+      } catch (error) {
+        return {
+          result: { error: 'GitHub API error', message: error instanceof Error ? error.message : 'Unknown error' },
+          requiresApproval: false
+        };
+      }
+    }
+
+    case 'github_get_file': {
+      const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
+      if (!GITHUB_TOKEN) {
+        return {
+          result: { error: 'GitHub integration not configured. GITHUB_TOKEN secret is required.' },
+          requiresApproval: false
+        };
+      }
+
+      const { repo_owner, repo_name, path, branch = 'main' } = args;
+
+      try {
+        const response = await fetch(
+          `https://api.github.com/repos/${repo_owner}/${repo_name}/contents/${path}?ref=${branch}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'AI-Developer-Agent'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          return {
+            result: { error: 'Failed to get file', details: error.message },
+            requiresApproval: false
+          };
+        }
+
+        const fileData = await response.json();
+        const content = fileData.encoding === 'base64' 
+          ? atob(fileData.content.replace(/\n/g, ''))
+          : fileData.content;
+
+        return {
+          result: {
+            repo: `${repo_owner}/${repo_name}`,
+            path,
+            branch,
+            size: fileData.size,
+            sha: fileData.sha,
+            content: content
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'github_file_content',
+            title: `📄 ${path}`,
+            data: {
+              action: 'github_get_file',
+              repo: `${repo_owner}/${repo_name}`,
+              path,
+              size: fileData.size,
+              content_preview: content.substring(0, 500) + (content.length > 500 ? '...' : '')
+            }
+          }
+        };
+      } catch (error) {
+        return {
+          result: { error: 'GitHub API error', message: error instanceof Error ? error.message : 'Unknown error' },
+          requiresApproval: false
+        };
+      }
+    }
+
+    case 'github_create_branch': {
+      const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
+      if (!GITHUB_TOKEN) {
+        return {
+          result: { error: 'GitHub integration not configured. GITHUB_TOKEN secret is required.' },
+          requiresApproval: false
+        };
+      }
+
+      const { repo_owner, repo_name, branch_name, from_branch = 'main' } = args;
+
+      // Log the operation for approval
+      const { data: operation } = await supabase
+        .from('github_operations')
+        .insert({
+          user_id: userId,
+          session_id: sessionId,
+          operation_type: 'create_branch',
+          repo_owner,
+          repo_name,
+          branch_name,
+          target_branch: from_branch,
+          status: 'pending',
+          requires_approval: true,
+          risk_level: 'medium'
+        })
+        .select()
+        .single();
+
+      return {
+        result: {
+          operation_id: operation?.id,
+          status: 'pending_approval',
+          message: 'Branch creation requires developer approval.'
+        },
+        requiresApproval: true,
+        jsonDisplay: {
+          type: 'github_operation',
+          title: `🌿 Create Branch: ${branch_name}`,
+          data: {
+            action: 'github_create_branch',
+            repo: `${repo_owner}/${repo_name}`,
+            new_branch: branch_name,
+            from: from_branch,
+            status: 'PENDING_APPROVAL'
+          }
+        }
+      };
+    }
+
+    case 'github_merge_pr': {
+      const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
+      if (!GITHUB_TOKEN) {
+        return {
+          result: { error: 'GitHub integration not configured. GITHUB_TOKEN secret is required.' },
+          requiresApproval: false
+        };
+      }
+
+      const { repo_owner, repo_name, pr_number, merge_method = 'merge' } = args;
+
+      // Log the operation for approval - CRITICAL operation
+      const { data: operation } = await supabase
+        .from('github_operations')
+        .insert({
+          user_id: userId,
+          session_id: sessionId,
+          operation_type: 'merge_pr',
+          repo_owner,
+          repo_name,
+          pr_number,
+          operation_data: { merge_method },
+          status: 'pending',
+          requires_approval: true,
+          risk_level: 'critical'
+        })
+        .select()
+        .single();
+
+      return {
+        result: {
+          operation_id: operation?.id,
+          status: 'pending_approval',
+          message: 'PR merge is a CRITICAL operation and requires developer approval.'
+        },
+        requiresApproval: true,
+        jsonDisplay: {
+          type: 'github_operation',
+          title: `⚠️ Merge PR #${pr_number}`,
+          data: {
+            action: 'github_merge_pr',
+            repo: `${repo_owner}/${repo_name}`,
+            pr_number,
+            merge_method,
+            risk: 'CRITICAL',
+            status: 'PENDING_APPROVAL'
+          }
+        }
+      };
+    }
+
+    case 'github_list_prs': {
+      const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
+      if (!GITHUB_TOKEN) {
+        return {
+          result: { error: 'GitHub integration not configured. GITHUB_TOKEN secret is required.' },
+          requiresApproval: false
+        };
+      }
+
+      const { repo_owner, repo_name, state = 'open' } = args;
+
+      try {
+        const response = await fetch(
+          `https://api.github.com/repos/${repo_owner}/${repo_name}/pulls?state=${state}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'AI-Developer-Agent'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          return {
+            result: { error: 'Failed to list PRs', details: error.message },
+            requiresApproval: false
+          };
+        }
+
+        const prs = await response.json();
+        const prList = prs.map((pr: any) => ({
+          number: pr.number,
+          title: pr.title,
+          state: pr.state,
+          author: pr.user?.login,
+          created_at: pr.created_at,
+          head: pr.head?.ref,
+          base: pr.base?.ref
+        }));
+
+        return {
+          result: {
+            repo: `${repo_owner}/${repo_name}`,
+            state,
+            pr_count: prList.length,
+            pull_requests: prList
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'github_prs',
+            title: `🔀 PRs (${state})`,
+            data: {
+              action: 'github_list_prs',
+              repo: `${repo_owner}/${repo_name}`,
+              count: prList.length,
+              prs: prList.slice(0, 10)
+            }
+          }
+        };
+      } catch (error) {
+        return {
+          result: { error: 'GitHub API error', message: error instanceof Error ? error.message : 'Unknown error' },
+          requiresApproval: false
+        };
+      }
+    }
+
+    case 'github_list_branches': {
+      const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
+      if (!GITHUB_TOKEN) {
+        return {
+          result: { error: 'GitHub integration not configured. GITHUB_TOKEN secret is required.' },
+          requiresApproval: false
+        };
+      }
+
+      const { repo_owner, repo_name } = args;
+
+      try {
+        const response = await fetch(
+          `https://api.github.com/repos/${repo_owner}/${repo_name}/branches`,
+          {
+            headers: {
+              'Authorization': `Bearer ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'AI-Developer-Agent'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          return {
+            result: { error: 'Failed to list branches', details: error.message },
+            requiresApproval: false
+          };
+        }
+
+        const branches = await response.json();
+        const branchList = branches.map((b: any) => ({
+          name: b.name,
+          protected: b.protected,
+          sha: b.commit?.sha?.substring(0, 7)
+        }));
+
+        return {
+          result: {
+            repo: `${repo_owner}/${repo_name}`,
+            branch_count: branchList.length,
+            branches: branchList
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'github_branches',
+            title: `🌿 Branches`,
+            data: {
+              action: 'github_list_branches',
+              repo: `${repo_owner}/${repo_name}`,
+              count: branchList.length,
+              branches: branchList.map((b: any) => b.name)
+            }
+          }
+        };
+      } catch (error) {
+        return {
+          result: { error: 'GitHub API error', message: error instanceof Error ? error.message : 'Unknown error' },
+          requiresApproval: false
+        };
+      }
+    }
+
+    case 'database_migration': {
+      const { operation, migration_name, description, sql, rollback_sql, tables_affected } = args;
+
+      // Safety check the SQL
+      const dangerousPatterns = [
+        /DROP\s+DATABASE/i,
+        /DROP\s+SCHEMA/i,
+        /TRUNCATE/i,
+        /ALTER\s+TABLE.*DROP\s+COLUMN/i,
+      ];
+
+      for (const pattern of dangerousPatterns) {
+        if (pattern.test(sql)) {
+          return {
+            result: { 
+              blocked: true, 
+              reason: 'SQL contains dangerous patterns. This migration type is not allowed through the AI agent.' 
+            },
+            requiresApproval: false,
+            jsonDisplay: {
+              type: 'warning',
+              title: '⛔ Migration Blocked',
+              data: { reason: 'Dangerous SQL pattern detected', sql_preview: sql.substring(0, 100) }
+            }
+          };
+        }
+      }
+
+      // Log the migration for approval
+      const { data: migration } = await supabase
+        .from('database_migrations_log')
+        .insert({
+          session_id: sessionId,
+          proposed_by: 'ai_agent',
+          user_id: userId,
+          migration_name,
+          migration_description: description,
+          migration_sql: sql,
+          rollback_sql: rollback_sql || null,
+          tables_affected,
+          operation_type: operation,
+          status: 'pending',
+          risk_level: operation === 'create_table' ? 'medium' : 'high',
+          safety_analysis: {
+            checked_at: new Date().toISOString(),
+            dangerous_patterns_found: false
+          }
+        })
+        .select()
+        .single();
+
+      return {
+        result: {
+          migration_id: migration?.id,
+          status: 'pending_approval',
+          message: 'Database migration requires developer approval before execution.'
+        },
+        requiresApproval: true,
+        jsonDisplay: {
+          type: 'database_migration',
+          title: `🗄️ Migration: ${migration_name}`,
+          data: {
+            action: 'database_migration',
+            operation,
+            name: migration_name,
+            tables: tables_affected,
+            sql_preview: sql.substring(0, 200) + (sql.length > 200 ? '...' : ''),
+            status: 'PENDING_APPROVAL',
+            risk: operation === 'create_table' ? 'MEDIUM' : 'HIGH'
+          }
+        }
+      };
+    }
+
+    case 'apply_code_change': {
+      const { proposal_id, apply_method, repo_owner, repo_name } = args;
+
+      // Get the proposal
+      const { data: proposal, error } = await supabase
+        .from('code_change_proposals')
+        .select('*')
+        .eq('id', proposal_id)
+        .single();
+
+      if (error || !proposal) {
+        return {
+          result: { error: 'Proposal not found' },
+          requiresApproval: false
+        };
+      }
+
+      if (proposal.status !== 'approved') {
+        return {
+          result: { 
+            error: 'Proposal not approved', 
+            current_status: proposal.status,
+            message: 'Only approved proposals can be applied.'
+          },
+          requiresApproval: false
+        };
+      }
+
+      if (apply_method === 'github_commit' || apply_method === 'github_pr') {
+        const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
+        if (!GITHUB_TOKEN) {
+          return {
+            result: { error: 'GitHub integration not configured for code application.' },
+            requiresApproval: false
+          };
+        }
+
+        // Create GitHub operation
+        const { data: operation } = await supabase
+          .from('github_operations')
+          .insert({
+            user_id: userId,
+            session_id: sessionId,
+            operation_type: apply_method === 'github_pr' ? 'create_pr' : 'push_commit',
+            repo_owner,
+            repo_name,
+            commit_message: `[AI] ${proposal.explanation || 'Apply code change'}`,
+            files_changed: [{ path: proposal.file_path, content: proposal.proposed_code }],
+            status: 'pending',
+            requires_approval: true,
+            risk_level: 'high'
+          })
+          .select()
+          .single();
+
+        return {
+          result: {
+            operation_id: operation?.id,
+            proposal_id,
+            apply_method,
+            status: 'pending_github_approval',
+            message: 'GitHub operation created and pending approval.'
+          },
+          requiresApproval: true,
+          jsonDisplay: {
+            type: 'apply_code',
+            title: `📤 Apply: ${proposal.file_path}`,
+            data: {
+              action: 'apply_code_change',
+              method: apply_method,
+              file: proposal.file_path,
+              status: 'PENDING_GITHUB_APPROVAL'
+            }
+          }
+        };
+      }
+
+      // Storage method - mark as applied
+      await supabase
+        .from('code_change_proposals')
+        .update({ 
+          status: 'applied', 
+          applied_at: new Date().toISOString() 
+        })
+        .eq('id', proposal_id);
+
+      return {
+        result: {
+          proposal_id,
+          apply_method: 'storage',
+          status: 'applied',
+          message: 'Code change marked as applied.'
+        },
+        requiresApproval: false,
+        jsonDisplay: {
+          type: 'apply_code',
+          title: `✅ Applied: ${proposal.file_path}`,
+          data: {
+            action: 'apply_code_change',
+            file: proposal.file_path,
+            status: 'APPLIED'
+          }
+        }
+      };
+    }
+
+    case 'enhanced_file_operation': {
+      const { operation, file_path, content, description } = args;
+      
+      const requiresApproval = ['create', 'update', 'delete'].includes(operation);
+      const riskLevel = operation === 'delete' ? 'high' : operation === 'update' ? 'medium' : 'low';
+
+      if (operation === 'list') {
+        // Just list files - no approval needed
+        const { data: files } = await supabase
+          .from('uploaded_documents')
+          .select('file_name, file_type, file_size, created_at')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        return {
+          result: {
+            operation: 'list',
+            file_count: files?.length || 0,
+            files: files
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'file_list',
+            title: 'File List',
+            data: {
+              action: 'enhanced_file_operation',
+              operation: 'list',
+              count: files?.length || 0
+            }
+          }
+        };
+      }
+
+      if (operation === 'read') {
+        // Read file from storage
+        const { data: fileData } = await supabase
+          .from('uploaded_documents')
+          .select('*')
+          .eq('storage_path', file_path)
+          .single();
+
+        return {
+          result: {
+            operation: 'read',
+            file_path,
+            file_data: fileData,
+            content: fileData?.extracted_text?.substring(0, 2000)
+          },
+          requiresApproval: false,
+          jsonDisplay: {
+            type: 'file_read',
+            title: `📄 ${file_path}`,
+            data: {
+              action: 'enhanced_file_operation',
+              operation: 'read',
+              path: file_path,
+              size: fileData?.file_size
+            }
+          }
+        };
+      }
+
+      // Create/Update/Delete require logging and approval
+      const { data: fileOp } = await supabase
+        .from('file_operations_log')
+        .insert({
+          user_id: userId,
+          session_id: sessionId,
+          operation_type: operation,
+          file_path,
+          file_content: content,
+          change_description: description,
+          status: 'pending',
+          requires_approval: requiresApproval,
+          risk_level: riskLevel
+        })
+        .select()
+        .single();
+
+      return {
+        result: {
+          operation_id: fileOp?.id,
+          operation,
+          file_path,
+          status: 'pending_approval',
+          message: `File ${operation} operation requires developer approval.`
+        },
+        requiresApproval,
+        jsonDisplay: {
+          type: 'file_operation',
+          title: `📁 ${operation}: ${file_path}`,
+          data: {
+            action: 'enhanced_file_operation',
+            operation,
+            path: file_path,
+            risk: riskLevel.toUpperCase(),
+            status: 'PENDING_APPROVAL'
           }
         }
       };
