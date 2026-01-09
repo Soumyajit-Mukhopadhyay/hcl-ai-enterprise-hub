@@ -12,6 +12,8 @@ import { FileSystem } from './file-system';
 import { AIAgent } from './ai-agent';
 import { FixLoop } from './fix-loop';
 import { Watcher } from './watcher';
+import { LocalAgent } from './local-agent';
+import { WebSocketAgentServer } from './websocket-server';
 
 const program = new Command();
 
@@ -22,6 +24,7 @@ ${chalk.cyan('║')}  ${chalk.bold.white('HCLTech AI Developer')} ${chalk.gray('
 ${chalk.cyan('╠═══════════════════════════════════════════════════════════╣')}
 ${chalk.cyan('║')}  ${chalk.yellow('⚡')} Auto-fix errors    ${chalk.yellow('⚡')} Git integration              ${chalk.cyan('║')}
 ${chalk.cyan('║')}  ${chalk.yellow('⚡')} Watch mode         ${chalk.yellow('⚡')} AI-powered analysis          ${chalk.cyan('║')}
+${chalk.cyan('║')}  ${chalk.yellow('⚡')} WebSocket server   ${chalk.yellow('⚡')} Local file operations        ${chalk.cyan('║')}
 ${chalk.cyan('╚═══════════════════════════════════════════════════════════╝')}
 `;
 
@@ -355,6 +358,191 @@ program
       logger.error('Pull failed', e as Error);
       process.exit(1);
     }
+  });
+
+program
+  .command('serve')
+  .description('Start WebSocket server for remote AI agent connection')
+  .option('-p, --path <path>', 'Project path', process.cwd())
+  .option('--port <port>', 'WebSocket server port', '8765')
+  .option('--token <token>', 'Authentication token')
+  .action(async (options) => {
+    console.log(banner);
+    
+    const config = loadConfig(options.path);
+    const logger = new Logger(config.logFile, config.verbose);
+    const token = options.token || process.env.AGENT_AUTH_TOKEN || 'hcl-dev-' + Math.random().toString(36).substr(2, 9);
+    
+    console.log(chalk.cyan('\n🔐 Authentication Token:'), chalk.yellow(token));
+    console.log(chalk.gray('   Use this token to connect from the web interface\n'));
+    
+    const server = new WebSocketAgentServer(config.projectRoot, logger, token);
+    
+    // Handle graceful shutdown
+    process.on('SIGINT', () => {
+      console.log(chalk.yellow('\nShutting down server...'));
+      server.stop();
+      process.exit(0);
+    });
+    
+    server.start(parseInt(options.port));
+  });
+
+program
+  .command('create <path>')
+  .description('Create a new file with content')
+  .option('-p, --project <path>', 'Project path', process.cwd())
+  .option('-c, --content <content>', 'File content', '')
+  .action(async (filePath, options) => {
+    console.log(banner);
+    
+    const config = loadConfig(options.project);
+    const logger = new Logger(config.logFile, config.verbose);
+    const agent = new LocalAgent(config.projectRoot, logger);
+    
+    // Read content from stdin if not provided
+    let content = options.content;
+    if (!content && !process.stdin.isTTY) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of process.stdin) {
+        chunks.push(chunk);
+      }
+      content = Buffer.concat(chunks).toString('utf-8');
+    }
+    
+    const result = await agent.createFile(filePath, content);
+    
+    if (result.success) {
+      console.log(chalk.green(`\n✔ ${result.message}`));
+    } else {
+      console.log(chalk.red(`\n✖ ${result.message}`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('read <path>')
+  .description('Read a file and output its contents')
+  .option('-p, --project <path>', 'Project path', process.cwd())
+  .action(async (filePath, options) => {
+    const config = loadConfig(options.project);
+    const logger = new Logger(config.logFile, false);
+    const agent = new LocalAgent(config.projectRoot, logger);
+    
+    const result = await agent.readFile(filePath);
+    
+    if (result.success) {
+      console.log(result.data.content);
+    } else {
+      console.error(chalk.red(`Error: ${result.message}`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('delete <path>')
+  .description('Delete a file')
+  .option('-p, --project <path>', 'Project path', process.cwd())
+  .option('-f, --force', 'Skip confirmation', false)
+  .action(async (filePath, options) => {
+    console.log(banner);
+    
+    const config = loadConfig(options.project);
+    const logger = new Logger(config.logFile, config.verbose);
+    const agent = new LocalAgent(config.projectRoot, logger);
+    
+    if (!options.force) {
+      const { confirm } = await inquirer.prompt([{
+        type: 'confirm',
+        name: 'confirm',
+        message: `Delete ${filePath}?`,
+        default: false
+      }]);
+      
+      if (!confirm) {
+        console.log(chalk.yellow('Cancelled'));
+        return;
+      }
+    }
+    
+    const result = await agent.deleteFile(filePath);
+    
+    if (result.success) {
+      console.log(chalk.green(`\n✔ ${result.message}`));
+    } else {
+      console.log(chalk.red(`\n✖ ${result.message}`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('list [path]')
+  .description('List files in a directory')
+  .option('-p, --project <path>', 'Project path', process.cwd())
+  .action(async (dirPath = '.', options) => {
+    const config = loadConfig(options.project);
+    const logger = new Logger(config.logFile, false);
+    const agent = new LocalAgent(config.projectRoot, logger);
+    
+    const result = await agent.listFiles(dirPath);
+    
+    if (result.success) {
+      console.log(chalk.cyan(`\n📁 Contents of ${dirPath}:\n`));
+      for (const item of result.data) {
+        const icon = item.type === 'directory' ? '📁' : '📄';
+        console.log(`  ${icon} ${item.name}`);
+      }
+    } else {
+      console.error(chalk.red(`Error: ${result.message}`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('run <command...>')
+  .description('Run a shell command')
+  .option('-p, --project <path>', 'Project path', process.cwd())
+  .option('--timeout <ms>', 'Command timeout in ms', '60000')
+  .action(async (commandParts, options) => {
+    const config = loadConfig(options.project);
+    const logger = new Logger(config.logFile, config.verbose);
+    const agent = new LocalAgent(config.projectRoot, logger);
+    
+    const command = commandParts.join(' ');
+    const spinner = ora(`Running: ${command}`).start();
+    
+    const result = await agent.runCommand({
+      command,
+      timeout: parseInt(options.timeout)
+    });
+    
+    if (result.success) {
+      spinner.succeed('Command completed');
+      if (result.data?.output) {
+        console.log(result.data.output);
+      }
+    } else {
+      spinner.fail('Command failed');
+      console.error(chalk.red(result.message));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('structure')
+  .description('Show project structure')
+  .option('-p, --path <path>', 'Project path', process.cwd())
+  .option('-d, --depth <depth>', 'Max depth', '4')
+  .action(async (options) => {
+    console.log(banner);
+    
+    const config = loadConfig(options.path);
+    const logger = new Logger(config.logFile, false);
+    const fileSystem = new FileSystem(config.projectRoot, logger);
+    
+    console.log(chalk.cyan('\n📁 Project Structure:\n'));
+    const structure = await fileSystem.getProjectStructure(parseInt(options.depth));
+    console.log(chalk.gray(structure));
   });
 
 // Parse command line arguments
