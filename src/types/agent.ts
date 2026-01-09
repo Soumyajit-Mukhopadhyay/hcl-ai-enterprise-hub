@@ -34,6 +34,7 @@ export interface Message {
   timestamp: Date;
   citations?: Citation[];
   action?: ActionSchema;
+  jsonSchemas?: any[];  // For displaying structured AI outputs
   agentNodes?: AgentNode[];
   isStreaming?: boolean;
 }

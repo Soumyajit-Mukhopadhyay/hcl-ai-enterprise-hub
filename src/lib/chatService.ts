@@ -1,7 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Message, Citation, ActionSchema } from '@/types/agent';
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hr-chat`;
+// Use advanced-agent for full AI capabilities
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/advanced-agent`;
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -155,8 +156,9 @@ export async function streamChatResponse({
   }
 }
 
-export function parseAIResponse(content: string): { citations: Citation[]; action: ActionSchema | null } {
+export function parseAIResponse(content: string): { citations: Citation[]; action: ActionSchema | null; jsonSchemas: any[] } {
   const citations: Citation[] = [];
+  const jsonSchemas: any[] = [];
   
   // Parse [DocumentName, Page X] format
   const docPageRegex = /\[([^\],]+),\s*Page\s*(\d+)\]/g;
@@ -172,7 +174,6 @@ export function parseAIResponse(content: string): { citations: Citation[]; actio
   // Also parse simple [Page X] format
   const simplePageRegex = /\[Page\s*(\d+)\]/g;
   while ((match = simplePageRegex.exec(content)) !== null) {
-    // Check if already captured by docPageRegex
     const exists = citations.some(c => c.pageNum === parseInt(match[1]));
     if (!exists) {
       citations.push({ 
@@ -182,17 +183,41 @@ export function parseAIResponse(content: string): { citations: Citation[]; actio
       });
     }
   }
+
+  // Extract JSON code blocks - these are AI-generated schemas
+  const jsonBlockRegex = /```json\n([\s\S]*?)\n```/g;
+  while ((match = jsonBlockRegex.exec(content)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      jsonSchemas.push(parsed);
+    } catch (e) {
+      // Invalid JSON, skip
+    }
+  }
+
+  // Extract action from JSON schemas
+  let action: ActionSchema | null = null;
+  for (const schema of jsonSchemas) {
+    if (schema.action && schema.action !== 'analyze_multi_task') {
+      action = {
+        actionType: schema.action,
+        tool: schema.action,
+        parameters: schema.data || schema,
+        riskScore: schema.risk_score || 0.3,
+        riskLevel: schema.risk_level || 'low',
+        idempotencyToken: `action-${Date.now()}`
+      };
+      break;
+    }
+  }
   
-  return { citations, action: null };
+  return { citations, action, jsonSchemas };
 }
 
 function extractSnippet(content: string, citationIndex: number): string {
-  // Extract ~100 chars before the citation as snippet
   const start = Math.max(0, citationIndex - 100);
   const end = citationIndex;
   let snippet = content.slice(start, end).trim();
-  
-  // Clean up snippet
   if (start > 0) snippet = '...' + snippet;
   return snippet.replace(/\n/g, ' ').trim();
 }

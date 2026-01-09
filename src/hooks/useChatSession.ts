@@ -190,7 +190,7 @@ export function useChatSession() {
           ));
         },
         onDone: async () => {
-          const { citations, action } = parseAIResponse(assistantContent);
+          const { citations, action, jsonSchemas } = parseAIResponse(assistantContent);
           
           const finalMessage: Message = {
             id: assistantId,
@@ -199,6 +199,7 @@ export function useChatSession() {
             timestamp: new Date(),
             citations: citations.length > 0 ? citations : undefined,
             action: action || undefined,
+            jsonSchemas: jsonSchemas.length > 0 ? jsonSchemas : undefined,
           };
 
           setMessages(prev => prev.map(m => 
