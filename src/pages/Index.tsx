@@ -8,9 +8,9 @@ import { ChatHistorySidebar } from '@/components/chat/ChatHistorySidebar';
 import { PDFCitationViewer } from '@/components/chat/PDFCitationViewer';
 import { GlassBoxVisualization } from '@/components/chat/GlassBoxVisualization';
 import { UserContextPanel } from '@/components/context/UserContextPanel';
-import { CalendarPanel } from '@/components/calendar/CalendarPanel';
+import { DynamicCalendarPanel } from '@/components/calendar/DynamicCalendarPanel';
 import { ApprovalPanel } from '@/components/approvals/ApprovalPanel';
-import { NotificationPanel } from '@/components/notifications/NotificationPanel';
+import { EnhancedNotificationPanel } from '@/components/notifications/EnhancedNotificationPanel';
 import { PayslipWorkflow } from '@/components/workflows/PayslipWorkflow';
 import { ReimbursementWorkflow } from '@/components/workflows/ReimbursementWorkflow';
 import { TrainingWorkflow } from '@/components/workflows/TrainingWorkflow';
@@ -153,7 +153,7 @@ const Index = () => {
           {/* Left Context Panel */}
           <div className="w-80 border-r border-border bg-muted/30 overflow-auto p-3 space-y-3 hidden lg:block">
             <UserContextPanel />
-            <NotificationPanel />
+            <EnhancedNotificationPanel />
             {(role === 'hr' || role === 'developer') && <ApprovalPanel />}
             
             {/* Role-specific Quick Actions */}
@@ -226,7 +226,7 @@ const Index = () => {
               {agentNodes.length > 0 && (
                 <GlassBoxVisualization nodes={agentNodes} isProcessing={isProcessing} />
               )}
-              <CalendarPanel />
+              <DynamicCalendarPanel />
             </div>
           )}
         </div>
