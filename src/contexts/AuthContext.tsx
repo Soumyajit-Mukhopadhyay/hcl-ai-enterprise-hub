@@ -107,36 +107,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         setSession(session);
         setUser(session?.user ?? null);
+        setLoading(false);
         
         if (session?.user) {
-          await fetchUserData(session.user.id);
+          // Fetch user data in background without blocking
+          fetchUserData(session.user.id).catch(err => {
+            console.error('Error loading user data:', err);
+          });
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         if (!isMounted) return;
         
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await fetchUserData(session.user.id);
+          fetchUserData(session.user.id).catch(err => {
+            console.error('Error loading user data:', err);
+          });
         } else {
           setProfile(null);
           setRole(null);
           setLeaveBalance(null);
         }
-        setLoading(false);
       }
     );
 
