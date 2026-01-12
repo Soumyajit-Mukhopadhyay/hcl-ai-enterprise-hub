@@ -2,8 +2,13 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Lovable Cloud project credentials (public/anon key is safe to include)
+const FALLBACK_SUPABASE_URL = "https://poroqwiqrzgrydlvuibu.supabase.co";
+const FALLBACK_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvcm9xd2lxcnpncnlkbHZ1aWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyNjU3OTksImV4cCI6MjA4Mjg0MTc5OX0.sb3c3tlisEkc2jWtr7r2dPcP0tGrslxglNSgJyFpQOA";
+
+// Use environment variables when available, fall back to hardcoded values for preview
+const SUPABASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) || FALLBACK_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY) || FALLBACK_SUPABASE_ANON_KEY;
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
